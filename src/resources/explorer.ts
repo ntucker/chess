@@ -22,8 +22,9 @@ export interface ExplorerCounts {
  * the explorer refuses requests without a token. Counts change slowly, so an
  * answer is kept for a day. A refusal (`ExplorerRefusal`, which signs out on
  * a 401: `LichessTokens`) is passed on only while the token it refused is
- * still the saved one, so a request queued before signing in again can't
- * sign out the new account.
+ * still the saved one: a request that waited while the learner signed in
+ * again asks again with the new token, so it neither signs out the new
+ * account nor fails for it.
  *
  * ```ts
  * const { counts, total } = await ctrl.fetch(getExplorerCounts, 1400, key);
@@ -31,18 +32,15 @@ export interface ExplorerCounts {
  */
 export const getExplorerCounts = new Endpoint(
   async (band: number, key: PositionKey): Promise<ExplorerCounts> => {
-    const token = lichessToken();
-    if (!token) throw new Error('Sign in with lichess to ask its explorer');
-    try {
-      const { counts, total } = await askLichess(key, band, token);
-      return { counts: recordedCounts(key, counts), total };
-    } catch (error) {
-      if (error instanceof ExplorerRefusal && lichessToken() !== token) {
-        throw new Error('lichess refused a token the learner has since signed out of', {
-          cause: error,
-        });
+    for (;;) {
+      const token = lichessToken();
+      if (!token) throw new Error('Sign in with lichess to ask its explorer');
+      try {
+        const { counts, total } = await askLichess(key, band, token);
+        return { counts: recordedCounts(key, counts), total };
+      } catch (error) {
+        if (!(error instanceof ExplorerRefusal) || lichessToken() === token) throw error;
       }
-      throw error;
     }
   },
   { name: 'getExplorerCounts', dataExpiryLength: 24 * 60 * 60 * 1000 },

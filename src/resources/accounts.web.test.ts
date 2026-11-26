@@ -150,7 +150,7 @@ describe('lichess account on the device', () => {
     expect(failed()).toBeUndefined();
   });
 
-  it('keeps an account signed in since when a request from before it is refused', async () => {
+  it('asks again with the new token when one from before signing in again is refused', async () => {
     const signedIn = (token: string) =>
       localStorage.setItem(
         'accounts',
@@ -169,11 +169,15 @@ describe('lichess account on the device', () => {
     // Waits for lichess's pace to let the request out.
     while (!refuse) await new Promise((resolve) => setTimeout(resolve, 20));
     signedIn('lip_new');
+    answers = [json({ white: 1, draws: 0, black: 0, moves: [] })];
     refuse();
 
-    await expect(asked).rejects.toThrow('since signed out of');
+    expect((await asked).total).toBe(1);
+    expect(calls.map((call) => call.init?.headers)).toEqual([
+      { Authorization: 'Bearer lip_old' },
+      { Authorization: 'Bearer lip_new' },
+    ]);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(saved().lichess.token).toBe('lip_new');
-    expect(calls.map((call) => call.init?.method)).not.toContain('DELETE');
   });
 });

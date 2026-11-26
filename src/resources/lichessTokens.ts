@@ -13,8 +13,8 @@ import { getExplorerCounts } from './explorer';
  * on lichess, or it expired), so the finder goes back to Maia's estimates
  * rather than failing at every position; only a refusal of the token saved
  * now arrives as one (`getExplorerCounts`). And when an account is signed in,
- * here or in another tab, it asks again for the answers that failed, which
- * the finder otherwise never asks for again.
+ * here or in another tab, it forgets the answers that failed, so the finder
+ * asks for them again (it never asks again for one that failed).
  */
 export class LichessTokens implements Manager {
   /** The explorer's failed answers by key, with what they asked. */
@@ -23,8 +23,9 @@ export class LichessTokens implements Manager {
   middleware: Middleware = (controller) => (next) => (action) => {
     if (action.type !== actionTypes.SET_RESPONSE) return next(action);
     if (action.endpoint === getExplorerCounts) {
-      if (!action.error) this.failed.delete(action.key);
-      else {
+      if (!action.error) {
+        this.failed.delete(action.key);
+      } else {
         this.failed.set(action.key, action.args as [number, PositionKey]);
         if (action.response instanceof ExplorerRefusal && action.response.status === 401) {
           void controller.fetch(signOutLichess);
