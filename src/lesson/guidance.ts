@@ -65,9 +65,9 @@
  *   being a rare reply doesn't hide it: it still punishes.
  * - The label of the move just played (best, mistake...) is badged on its
  *   piece only in Explore with "Arrows" on, like Stockfish's best
- *   (`engineMarks`). It grades the move, and Practice keeps grades off the
- *   board while the learner plays: the scoresheet and review show them. The
- *   refutation above differs: it is the reply coming, not a grade.
+ *   (`engineMarksShown`). It grades the move, and Practice keeps grades off
+ *   the board: the scoresheet and review show them. The refutation above
+ *   differs: it is the reply coming, not a grade.
  * - In Explore, each guide candidate carries Stockfish's verdict on it
  *   (`Guidance.verdicts`), the book move too, so the learner can tell a
  *   popular move from a good one. Practice keeps it hidden like every
@@ -384,8 +384,9 @@ export function guidance(input: GuidanceInput): Guidance {
   // Where the list judges its moves: Stockfish's verdicts, and the opportunities.
   const judged = explore && !picking;
   // Stockfish's marks on the board: its best move, and the label of the move just played.
-  const engineMarks = explore && movesShown;
-  const best = engineMarks && resting && engine?.best !== refutation ? engine?.best : undefined;
+  const engineMarksShown = explore && movesShown;
+  const best =
+    engineMarksShown && resting && engine?.best !== refutation ? engine?.best : undefined;
 
   const acts = cueActs(view, mode, picking);
   const opportunity =
@@ -416,7 +417,7 @@ export function guidance(input: GuidanceInput): Guidance {
         ? new Set(view.candidates.filter(({ move }) => move.mistake).map(({ move }) => move.uci))
         : NO_OPPORTUNITIES,
     refutation,
-    quality: engineMarks ? input.quality : undefined,
+    quality: engineMarksShown ? input.quality : undefined,
     trap,
     trapIn: trap && (withCue ? 'cue' : 'card'),
     acts,
