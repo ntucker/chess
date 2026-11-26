@@ -18,9 +18,8 @@ const FAILED_TIP = 'Signing in with lichess failed. Press to try again.';
  * The learner's lichess account as one header button: signed out, a person
  * with a plus, it signs in (`useLichessSignIn`); signed in, the account's
  * initial on an accent disc, its tooltip names the account and it signs out.
- * lichess has no profile photos, and an outlined person beside a filled one
- * read alike, so the two states look nothing alike. The account is read on the device, so the page's static export
- * draws nothing here.
+ * The account is read on the device, so the page's static export draws
+ * nothing here.
  */
 export function LichessAccount() {
   return (
