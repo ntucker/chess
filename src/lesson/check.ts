@@ -359,8 +359,13 @@ function checkMistake(
   report: Report,
 ) {
   if (move.book) report(path, BOOK_MARK);
-  if (cost !== undefined && !(cost >= MISTAKE_LOSS && cost <= 1))
-    report(`${path}.cost`, `must be from ${MISTAKE_LOSS} (a mistake) to 1`);
+  // A trap a study drew (it carries the study's verdict) holds whatever Stockfish measures; a find is a mistake.
+  const floor = verdict === undefined ? MISTAKE_LOSS : 0;
+  if (cost !== undefined && !(cost >= floor && cost <= 1))
+    report(
+      `${path}.cost`,
+      floor ? `must be from ${floor} (a mistake) to 1` : 'must be from 0 to 1',
+    );
   const bands = lesson.popularity?.ratingBands;
   if (gain && (gain.length !== bands?.length || !gain.every((n) => n >= 0 && n <= 1)))
     report(`${path}.gain`, 'needs one expected score from 0 to 1 per rating band');

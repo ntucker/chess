@@ -665,6 +665,16 @@ describe('checkLesson', () => {
       ]);
     });
 
+    it("takes a study's trap at any cost Stockfish measures, but no find under a mistake", () => {
+      const costProblems = (mistake: Mistake) =>
+        checkLesson(marking({ uci: 'g7g5', mistake }))
+          .map(({ path }) => path)
+          .filter((path) => path.endsWith('.cost'));
+      expect(costProblems({ cost: 0.05, verdict: 'whiteWinning' })).toEqual([]);
+      expect(costProblems({ cost: -0.01, verdict: 'whiteWinning' })).toEqual([`${at}.cost`]);
+      expect(costProblems({ cost: 0.05 })).toEqual([`${at}.cost`]);
+    });
+
     it('stores a line only of guide moves, and only where the guide would play another', () => {
       const afterG5 = afterD4.clone();
       afterG5.play(parseSan(afterG5, 'g5')!);

@@ -11,7 +11,7 @@ import { keyTurn, parsePosition, playMove, positionKey, readPositionKey } from '
 import { findScore, type Move, rankBy, reachOf } from '@/opportunity/finder';
 
 import type { Lesson, LessonMove, LessonPosition, PositionKey, Uci } from './lesson';
-import { guideOrder, mistakeLine } from './mistakes';
+import { guideOrder, type MarkedMove, markedMoves, mistakeLine } from './mistakes';
 import { bandShare } from './share';
 
 /** One of the other side's marked mistakes, with what its row shows. */
@@ -49,23 +49,15 @@ export interface Opportunity {
  * played in, in the file's order. Read once per lesson, since a big lesson
  * has many positions and the screen asks on every render.
  */
-function markedMistakes(lesson: Lesson): readonly MarkedMistake[] {
+function markedMistakes(lesson: Lesson): readonly MarkedMove[] {
   let found = marked.get(lesson);
   if (!found) {
-    found = Object.entries(lesson.positions).flatMap(([key, { moves }]) =>
-      keyTurn(key) === lesson.side
-        ? []
-        : moves.filter((move) => move.mistake).map((move) => ({ key, move })),
-    );
+    found = markedMoves(lesson).filter(({ key }) => keyTurn(key) !== lesson.side);
     marked.set(lesson, found);
   }
   return found;
 }
-const marked = new WeakMap<Lesson, readonly MarkedMistake[]>();
-interface MarkedMistake {
-  readonly key: PositionKey;
-  readonly move: LessonMove;
-}
+const marked = new WeakMap<Lesson, readonly MarkedMove[]>();
 
 /** The position `lesson` starts from, where every guide line begins. */
 const startKey = (lesson: Lesson) => positionKey(parsePosition(lesson.start)!);

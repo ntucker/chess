@@ -9,12 +9,20 @@ import type { Chess } from 'chessops/chess';
 
 import { parsePosition, playMove, positionKey } from '@/game/replay';
 
-import type { Lesson, LessonMove, LessonPosition, PositionKey, Uci } from './lesson';
+import type { Lesson, LessonMove, LessonPosition, Mistake, PositionKey, Uci } from './lesson';
 import { keepMistakeLines } from './mistakes';
 import { guidePosition } from './select';
 
+/** What a mark measures (`Mistake.cost` and `Mistake.gain`). */
+export interface MarkScores {
+  /** What the mistake gives away (`Mistake.cost`). */
+  readonly cost: number;
+  /** What knowing it is worth in each of the lesson's rating bands (`Mistake.gain`), where measured. */
+  readonly gain?: readonly number[];
+}
+
 /** An opportunity as a lesson's tree keeps it: its moves, and what the mark records. */
-export interface FindFragment {
+export interface FindFragment extends MarkScores {
   /** Act I: the moves from the lesson's start to the position where the opponent errs. */
   readonly line: readonly Uci[];
   /** The opponent's mistake, which gets the mark. */
@@ -23,16 +31,19 @@ export interface FindFragment {
   readonly replies: readonly Uci[];
   /** Act III: the moves after the best reply. */
   readonly payoff: readonly Uci[];
-  /** What the mistake gives away (`Mistake.cost`). */
-  readonly cost: number;
-  /** What knowing it is worth in each of the lesson's rating bands (`Mistake.gain`), where measured. */
-  readonly gain?: readonly number[];
 }
 
 type Entry = Omit<LessonPosition, 'moves'> & { moves: LessonMove[] };
 
 /** An expected score as the lesson file keeps it: to a thousandth, finer than any screen shows. */
 const thousandths = (score: number) => Math.round(score * 1000) / 1000;
+
+/** `mistake` with `scores` as the lesson file keeps them, replacing any it had. */
+export const scored = (mistake: Mistake, { cost, gain }: MarkScores): Mistake => ({
+  ...mistake,
+  cost: thousandths(cost),
+  ...(gain && { gain: gain.map(thousandths) }),
+});
 
 /** Puts `uci` among `entry`'s moves as `edit` makes it, from the guide's move or else a new one. */
 function upsert(entry: Entry, uci: Uci, edit: (move: LessonMove) => LessonMove = (move) => move) {
@@ -111,15 +122,11 @@ export function writeFinds(lesson: Lesson, finds: readonly FindFragment[]): Less
     for (const uci of find.line)
       play(uci, pos.turn === lesson.side && pastEnd(lesson, pos) ? booked : undefined);
     const marked = here().moves.find((move) => move.uci === find.mistake)?.mistake;
-    const scores = {
-      cost: thousandths(find.cost),
-      ...(find.gain && { gain: find.gain.map(thousandths) }),
-    };
     play(find.mistake, (move) => ({
       ...move,
       mistake: marked
-        ? { ...marked, ...scores }
-        : { ...scores, line: [find.replies[0], ...find.payoff] },
+        ? scored(marked, find)
+        : { ...scored({}, find), line: [find.replies[0], ...find.payoff] },
     }));
     if (marked) continue;
     const cue = here();

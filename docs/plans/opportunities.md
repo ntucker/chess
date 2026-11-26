@@ -284,7 +284,8 @@ limits it ran with. Set 2026-11-24 (Decisions).
   `Lesson.popularity.ratingBands`; absent means not measured) and `LessonMove.mistake` (`{ cost?,
   gain?, name?, verdict?, line? }`: cost (one value) and gain (one per band of
   `Lesson.popularity.ratingBands`) as above, absent only on migrated guide traps until the importer
-  step measures them (piece D1 for Stafford, D3 for the rest); `name` a short title for the list;
+  step measures them (piece D1 for Stafford, D3 for the rest; a study's trap may cost under the
+  floor, D3); `name` a short title for the list;
   `verdict` the `Trap` verdict it replaces; `line` below). Format 4: a note's trap idea becomes a
   `mistake` idea naming the marked move, which an older app can't read.
 - The `Trap` idea goes. Each existing trap idea (254: 172 in position notes, 82 in move notes)
@@ -325,7 +326,8 @@ limits it ran with. Set 2026-11-24 (Decisions).
   onto it: `candidates` and `countedReplies` gain the position's total as a parameter, `moveShares`
   keeps its floor and book-only scaling, and `repliesFrom` and `coverOpponent.ts` drop their own
   ratio. Also `countedReplies`' exception for a marked move without counts (Rules).
-- Checker rules for marked moves (legal; not a book move; `cost` at or over the floor when present;
+- Checker rules for marked moves (legal; not a book move; `cost` at or over the floor when present,
+  from 0 on a study's trap (D3);
   `line` made of guide moves and stored only where the choice rule plays another; a `losesMaterial`
   verdict holds on the line; a `mistake` idea names a marked move at its position; an opponent's
   mark whose cue a clean Practice run reaches (the book-move walk: learner book moves, any opponent
@@ -439,6 +441,23 @@ The step runs on every lesson; `--no-model` rebuilds each exactly. The PR lists,
 rows whose rare-row or counted-reply status changed and each Act III override of a guide move.
 Cap finds per lesson by score if the files grow too much for phones (the Caro-Kann file is already
 5.3 MB).
+
+As built, first part (measuring the traps the studies drew; turning the finder on for every lesson
+comes after):
+
+- Every lesson's marks without a cost are measured in the opportunities step (`measureMarks`,
+  `scripts/import-study/finds.ts`), either side's, as the finder measures a find: the cost from full
+  searches before and after the mistake (`<id>-opportunities-full.jsonl`), and the gain in every band
+  from that band's replies at the cue, for the side that punishes it. A trap the learner falls into
+  holds the opponent's numbers, so the data serves both directions. Each mark is reached by the
+  guide's first line to it (`linesTo`).
+- Counts with totals go on each such mark's own position and its cue, where its share and gains are
+  read, not on its whole path as a find's: the whole paths are about 2,650 positions, 13,000 explorer
+  requests (9 hours or more at lichess's pace), against about 500 positions.
+- A study's trap keeps the cost Stockfish measures even under `MISTAKE_LOSS` (decided by Nathaniel
+  2026-11-26): a practical trap can give away little yet be worth knowing, such as the Queen's
+  Gambit's 10...Ne4 (cost 0.054, gain 0.094 at 1400, reached in 9% of games). The checker's floor
+  applies to marks without a study verdict, the finder's.
 
 ### Piece G: List page
 
