@@ -18,7 +18,7 @@ import { lostPercent, percent } from '@/analysis/quality';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { type IconAction, IconActions } from '@/components/IconActions';
 import { Notation } from '@/components/Notation';
-import { HeadingTip, Tip } from '@/components/Tip';
+import { HEADING_INFO_SIZE, HeadingTip, InfoMark, Tip } from '@/components/Tip';
 import { lastPosition, lastStep, lineText, numberedMove } from '@/game/replay';
 import { bandRatings, type Lesson, type PositionKey, type Uci } from '@/lesson/lesson';
 import { opportunityMarks } from '@/lesson/marks';
@@ -141,11 +141,11 @@ export function OpportunityList({
       />
     </>
   );
-  // Some row shows: a saved or found row left out is one the lesson's rows or the saved list.
+  // Some row shows: a saved or found find is left out only where another row lists its position.
   const anyRow = rows.length > 0 || saved.finds.length > 0 || finder.run.finds.length > 0;
   return (
     <Stack style={compact ? STATIC.compact : labelled}>
-      <View style={STATIC.headLine}>
+      <View style={STATIC.line}>
         <HeadingTip tip={listTip(players)} style={STATIC.heading}>
           <Eyebrow>Opportunities</Eyebrow>
         </HeadingTip>
@@ -366,6 +366,7 @@ const COLUMNS = [
     tip: "Payoff: the winning chances the mistake gives you; # is mate. \u2013 means Stockfish hasn't judged it yet.",
   },
 ] as const;
+type Meter = (typeof COLUMNS)[number]['meter'];
 
 /**
  * An icon over each meter's column (`COLUMNS`), its tooltip saying what the
@@ -373,24 +374,23 @@ const COLUMNS = [
  * room after it is the rows' own after their meters, so it lines up with them.
  */
 function ColumnHeads({ styles }: { readonly styles: Styles }) {
-  const { color } = useTheme().theme.semantic;
   return (
     <>
-      <View style={STATIC.grow} />
-      <View style={[STATIC.meters, styles.columns]}>
-        {COLUMNS.map(({ meter, icon, tip }) => (
-          <Tip key={meter} tip={tip} style={styles.column}>
-            <Ionicons name={icon} size={COLUMN_ICON} color={color.textSecondary} />
-          </Tip>
-        ))}
+      {/* In a row's frame, so the icons sit where its meters do. */}
+      <View style={[styles.frame, STATIC.press]}>
+        <View style={STATIC.grow} />
+        <View style={STATIC.meters}>
+          {COLUMNS.map(({ meter, icon, tip }) => (
+            <Tip key={meter} tip={tip} style={styles.column}>
+              <InfoMark name={icon} size={HEADING_INFO_SIZE} />
+            </Tip>
+          ))}
+        </View>
       </View>
       <View style={styles.bookmarkRoom} />
     </>
   );
 }
-
-/** A column's icon, as tall as the eyebrow's capitals beside it. */
-const COLUMN_ICON = 14;
 
 /** No rows, the same each render. */
 const NONE: readonly Opportunity[] = [];
@@ -482,12 +482,12 @@ function Row({
   const lost = cost === undefined ? undefined : lostPercent(cost);
   // A dash only where unjudged, as each column's tip says.
   const payoff = mates ? '#' : cost === undefined ? '–' : lost ? `\u2212${lost}` : '0%';
-  // Each meter's number and how full its bar is: reach, how often, payoff.
-  const meters = [
-    { meter: 'reach', label: reach === undefined ? '–' : percent(reach), fill: reach ?? 0 },
-    { meter: 'share', label: share === undefined ? '–' : percent(share), fill: share ?? 0 },
-    { meter: 'payoff', label: payoff, fill: mates ? 1 : Math.min((cost ?? 0) / FULL_COST, 1) },
-  ] as const;
+  // Each meter's number and how full its bar is, in its column (`COLUMNS`).
+  const meters: Record<Meter, { label: string; fill: number }> = {
+    reach: { label: reach === undefined ? '–' : percent(reach), fill: reach ?? 0 },
+    share: { label: share === undefined ? '–' : percent(share), fill: share ?? 0 },
+    payoff: { label: payoff, fill: mates ? 1 : Math.min((cost ?? 0) / FULL_COST, 1) },
+  };
   return (
     <View style={STATIC.line}>
       <Pressable
@@ -505,6 +505,7 @@ function Row({
         accessibilityHint={row.hint}
         onPress={() => onPlay(line)}
         style={({ pressed }) => [
+          styles.frame,
           styles.row,
           STATIC.press,
           pressed && { backgroundColor: color.tones.neutral.subtle },
@@ -522,12 +523,12 @@ function Row({
           ) : null}
         </View>
         <View style={STATIC.meters} aria-hidden>
-          {meters.map(({ meter, label, fill }) => (
+          {COLUMNS.map(({ meter }) => (
             <View key={meter} style={styles.meter}>
               <Text role="caption" tone="secondary" style={STATIC.mono}>
-                {label}
+                {meters[meter].label}
               </Text>
-              <Progress size="sm" value={fill} max={1} />
+              <Progress size="sm" value={meters[meter].fill} max={1} />
             </View>
           ))}
         </View>
@@ -563,7 +564,6 @@ function leadIn(line: readonly Uci[]): string | undefined {
 const STATIC = StyleSheet.create({
   // As wide as its words, so its tip opens over them alone.
   heading: { alignSelf: 'flex-start' },
-  headLine: { flexDirection: 'row', alignItems: 'center' },
   finderHead: { paddingTop: 10, paddingBottom: 2 },
   grow: { flexGrow: 1 },
   compact: { gap: 4 },
@@ -582,12 +582,13 @@ const STATIC = StyleSheet.create({
 /** The room a row keeps for its bookmark under a mouse; a finger's is `touchTarget` square. */
 const BOOKMARK_WIDTH = 34;
 
-/** The card's border (Silk's `subtle`), which the rows sit inside of and the heading's line doesn't. */
+/** The card's border: every Silk `Surface` draws 1px, which the rows sit inside of and the heading's line doesn't. */
 const CARD_BORDER = 1;
 
 /**
- * A density's row and meter sizes: a phone's rows are 44 tall under a mouse,
- * and under a finger as tall as the bookmark's room (`touchTarget`).
+ * A density's row and meter sizes: `row` the rows' height (a phone's are 44
+ * tall under a mouse, and under a finger as tall as the bookmark's room,
+ * `touchTarget`).
  * `inset` is the rows' side padding, and `bookmarkInset` keeps the bookmark
  * off the card's edge, which `edge` (the card's border, if any) draws.
  */
@@ -596,23 +597,17 @@ function densityStyles(
   row: ViewStyle,
   { inset, bookmarkInset, edge }: { inset: number; bookmarkInset: number; edge: number },
 ) {
-  const bookmarkRoom = { width: BOOKMARK_WIDTH, minWidth: touchTarget, marginRight: bookmarkInset };
+  const bookmarkWidth = { width: BOOKMARK_WIDTH, minWidth: touchTarget };
   return StyleSheet.create({
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      outlineOffset: -2,
-      paddingHorizontal: inset,
-      ...row,
-    },
+    // A row's line across, which the column heads share; `row` sizes it down.
+    frame: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: inset },
+    row: { outlineOffset: -2, ...row },
     meter: { width: meter, gap: 3 },
     finder: { paddingHorizontal: inset },
     // Even where empty, so every row keeps the same room and height as one with a bookmark.
-    bookmark: { ...bookmarkRoom, minHeight: touchTarget },
-    // The column heads (`ColumnHeads`) end where the rows' meters do.
-    bookmarkRoom: { ...bookmarkRoom, marginRight: bookmarkInset + edge },
-    columns: { marginRight: inset },
+    bookmark: { ...bookmarkWidth, minHeight: touchTarget, marginRight: bookmarkInset },
+    // The bookmark's room after the column heads (`ColumnHeads`), which sit outside the card.
+    bookmarkRoom: { ...bookmarkWidth, marginRight: bookmarkInset + edge },
     // Flush left, as its numbers and bars are.
     column: { width: meter, alignItems: 'flex-start' },
   });
