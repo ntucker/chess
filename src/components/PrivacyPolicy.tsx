@@ -43,9 +43,11 @@ export function PrivacyPolicy() {
           You can sign in with your lichess account, so the opportunity finder counts real lichess
           games instead of estimating them. You sign in on lichess&apos;s own page; the app gets
           your lichess username and a token that lets it ask lichess&apos;s opening explorer, and
-          keeps both on your device. While you are signed in, the app sends lichess each position it
-          asks about, with that token, and nothing else. Signing out deletes both from your device
-          and asks lichess to revoke the token. lichess handles these requests under its{' '}
+          keeps both on your device. On the website, starting a sign-in also keeps a one-time check
+          code on your device, used only to finish that sign-in, until the next sign-in replaces it.
+          While you are signed in, the app sends lichess each position it asks about, with that
+          token, and nothing else. Signing out deletes both from your device and asks lichess to
+          revoke the token. lichess handles these requests under its{' '}
           <ExternalLink url={LICHESS_PRIVACY}>privacy policy</ExternalLink>.
         </Section>
         <Section heading="What the app downloads">
