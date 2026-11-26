@@ -60,6 +60,7 @@ import type { Color } from 'chessops/types';
 
 import { checkLesson } from '@/lesson/check';
 import type { Lesson } from '@/lesson/lesson';
+import { keepMistakeLines } from '@/lesson/mistakes';
 import { lessonIndex } from '@/lesson/openings';
 
 import { convertChapters, convertReport } from './convert';
@@ -72,7 +73,6 @@ import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
 import {
   buildKeepingMarks,
-  keepMistakeLines,
   markIds,
   markMistakes,
   settleMistakes,

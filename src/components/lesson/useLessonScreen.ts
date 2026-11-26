@@ -38,11 +38,13 @@ import { useLesson } from '@/lesson/useLesson';
 import { RATING_BANDS } from '@/lichess/explorer';
 import { MAIA_RATINGS } from '@/maia/ratings';
 import type { Cue } from '@/opportunity/cue';
+import { type SavedFind, savedFind, withSavedFinds } from '@/opportunity/saved';
 import { useFinder } from '@/opportunity/useFinder';
 import type { ReplySource } from '@/opportunity/walk';
 import { describeOpponent, isStockfish, type Opponent } from '@/opponent/opponent';
 import { getAccounts } from '@/resources/accounts';
 import { getLesson, LessonIndexContext, type LessonId } from '@/resources/lesson';
+import { getSavedFinds, saveFind, unsaveFind } from '@/resources/savedFinds';
 import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
 
@@ -163,10 +165,14 @@ export function useLessonScreen({
 }: LessonScreenInput): LessonScreenModel {
   const ctrl = useController();
   const index = use(LessonIndexContext);
-  // Before one is picked, the openings of `side` alone.
+  // Until the device answers, none: the lesson plays its own marks alone.
+  const everySaved = useDLE(getSavedFinds).data?.lessons;
+  const saved = (id && everySaved?.[id]) || NO_FINDS;
+  // Before one is picked, the openings of `side` alone. The learner's saved finds play as its own marks.
   const lesson = useMemo(
-    () => (picked ? withOpenings(picked, index) : openingsLesson(index, side)),
-    [picked, index, side],
+    () =>
+      picked ? withOpenings(withSavedFinds(picked, saved), index) : openingsLesson(index, side),
+    [picked, saved, index, side],
   );
   const {
     game,
@@ -422,6 +428,13 @@ export function useLessonScreen({
             progress,
             players: bandPlayers(picked, opponent),
             onPlay: (line) => dispatchGame({ type: 'newGame', moves: line }),
+            saved: {
+              finds: saved,
+              onSave: (find) =>
+                id &&
+                void ctrl.fetch(saveFind, { lesson: id, find: savedFind(find, finder.source) }),
+              onUnsave: (cue) => id && void ctrl.fetch(unsaveFind, { lesson: id, cue }),
+            },
             finder,
           }
         : null,
@@ -450,6 +463,9 @@ export function useLessonScreen({
     onLeave: leave,
   };
 }
+
+/** No saved finds, the same each render. */
+const NO_FINDS: readonly SavedFind[] = [];
 
 /**
  * The opportunity finder on the lesson `picked`, for its list: run from the

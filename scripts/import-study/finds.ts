@@ -1,11 +1,9 @@
 /**
  * The importer's opportunities step (piece D1 of docs/plans/opportunities.md):
  * runs the finder (src/opportunity) over a lesson for the learner's side and
- * writes each kept find on the guide into the tree. The mistake gets a marker
- * (`LessonMove.mistake`) with its cost and its gain in every rating band; the
- * cue's accepted replies and the learner's Act III moves become book moves,
- * the opponent's Act III moves ordinary ones; the marker stores its line only
- * where the guide's choice rule wouldn't give it. `addPathCounts` then writes
+ * writes each kept find on the guide into the tree (`writeFinds` in
+ * src/lesson/finds.ts), its mark with its gain in every rating band.
+ * `addPathCounts` then writes
  * the explorer's counts and totals on every position of the line each find's
  * mark plays.
  *
@@ -15,9 +13,10 @@
  */
 import { isFinal } from '@/evaluation/evaluation';
 import { playLine, positionKey } from '@/game/replay';
-import type { Lesson, LessonMove, LessonPosition, PositionKey, Uci } from '@/lesson/lesson';
 import { offGuide } from '@/lesson/check';
-import { mistakeLine } from '@/lesson/mistakes';
+import { writeFinds } from '@/lesson/finds';
+import type { Lesson, PositionKey } from '@/lesson/lesson';
+import { keepMistakeLines, mistakeLine } from '@/lesson/mistakes';
 import { guideMove } from '@/lesson/select';
 import { cueGain, type Find } from '@/opportunity/finder';
 import { LIMITS } from '@/opportunity/limits';
@@ -34,7 +33,6 @@ import {
   runFinder,
   settle,
 } from './finderHost';
-import { keepMistakeLines } from './mistakes';
 import { type Explorer, isCounted, recount } from './popularity';
 import { played } from './study';
 
@@ -111,71 +109,24 @@ function markedPositions(lesson: Lesson, find: Find): PositionKey[] {
   return [...playLine(path, startOf(lesson))].slice(0, -1).map(({ key }) => key);
 }
 
-type Entry = Omit<LessonPosition, 'moves'> & { moves: LessonMove[] };
-
-/** An expected score as the lesson file keeps it: to a thousandth, finer than any screen shows. */
-const thousandths = (score: number) => Math.round(score * 1000) / 1000;
-
-/** Puts `uci` among `entry`'s moves as `edit` makes it, from the guide's move or else a new one. */
-function upsert(entry: Entry, uci: Uci, edit: (move: LessonMove) => LessonMove = (move) => move) {
-  const i = entry.moves.findIndex((move) => move.uci === uci);
-  entry.moves[i < 0 ? entry.moves.length : i] = edit(entry.moves[i] ?? { uci });
-}
-
-const booked = (move: LessonMove): LessonMove => ({ ...move, book: true });
-
 /**
- * `lesson` with each of `finds` in its tree. Along Act I it adds the
- * opponent's replies the guide lacks (the learner's moves there are the
- * guide's, since the find is on it); it marks the mistake with its cost and
- * gain; it books every reply the cue accepts and the learner's Act III moves,
- * and adds the opponent's Act III moves where the guide has none. New
- * positions take the variation of the one before. Each new marker's line is
- * stored only where the guide's choice rule doesn't give it, and every older
- * marker keeps the line it had. A mistake the guide already marks (a trap
- * migrated from a study) keeps its line and verdict and only gains its cost
- * and gain.
+ * `lesson` with each of `finds` in its tree (`writeFinds`), each with its gain
+ * per band. Throws where a find plays a learner move the guide lacks, since
+ * only finds on the guide go into a lesson.
  */
 export function withFinds(lesson: Lesson, finds: readonly LessonFind[]): Lesson {
-  const positions: Record<PositionKey, Entry> = {};
-  for (const [key, entry] of Object.entries(lesson.positions))
-    positions[key] = { ...entry, moves: [...entry.moves] };
-  for (const { find, gain } of finds) {
+  for (const { find } of finds) {
     let pos = startOf(lesson);
-    let variation = positions[positionKey(pos)].variation;
-    /** The entry for `pos`, made in the variation of the position before where the guide has none. */
-    const here = () => {
-      const entry = (positions[positionKey(pos)] ??= { variation, moves: [] });
-      variation = entry.variation;
-      return entry;
-    };
-    const play = (uci: Uci, edit?: (move: LessonMove) => LessonMove) => {
-      upsert(here(), uci, edit);
-      pos = played(pos, uci);
-    };
     for (const uci of find.line) {
-      if (pos.turn === lesson.side && !here().moves.some((move) => move.uci === uci))
+      if (pos.turn === lesson.side && !guideMove(lesson, positionKey(pos), uci))
         throw new Error(`A find on the guide plays ${uci}, which the guide lacks there`);
-      play(uci);
+      pos = played(pos, uci);
     }
-    const marked = here().moves.find((move) => move.uci === find.mistake)?.mistake;
-    const scores = { cost: thousandths(find.cost), gain: gain.map(thousandths) };
-    play(find.mistake, (move) => ({
-      ...move,
-      mistake: marked
-        ? { ...marked, ...scores }
-        : { ...scores, line: [find.replies[0], ...find.payoff] },
-    }));
-    if (marked) continue;
-    const cue = here();
-    for (const uci of [find.replies[0], ...find.payoff])
-      play(uci, pos.turn === lesson.side ? booked : undefined);
-    // After the best reply, so the guide's choice rule plays it first where no counts say otherwise.
-    for (const uci of find.replies.slice(1)) upsert(cue, uci, booked);
   }
-  // The new markers store their whole line, so this keeps each as written; the
-  // older ones keep the guide's line they had before.
-  return keepMistakeLines(lesson, { ...lesson, positions: positions as Lesson['positions'] });
+  return writeFinds(
+    lesson,
+    finds.map(({ find, gain }) => ({ ...find, gain })),
+  );
 }
 
 /**
