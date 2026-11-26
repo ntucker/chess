@@ -89,9 +89,19 @@ describe("the popup's answer from lichess", () => {
     expect(saved()).toBeNull();
   });
 
-  it('has nothing to finish for an answer no sign-in waits for', async () => {
+  it('says a later sign-in replaced it, where another one waits, and trades nothing', async () => {
     savePendingSignIn(PENDING);
-    expect(await finishSignIn(newController(), '?code=c&state=forged')).toEqual({ type: 'none' });
+    expect(await finishSignIn(newController(), '?code=c&state=earlier')).toEqual({
+      type: 'replaced',
+    });
+    expect(calls).toEqual([]);
+    // The later sign-in still finishes.
+    expect(takePendingSignIn('abc')).toEqual(PENDING);
+  });
+
+  it('has nothing to finish where no sign-in waits', async () => {
+    expect(await finishSignIn(newController(), '?code=c&state=abc')).toEqual({ type: 'none' });
+    savePendingSignIn(PENDING);
     expect(await finishSignIn(newController(), '')).toEqual({ type: 'none' });
     expect(calls).toEqual([]);
   });

@@ -22,7 +22,11 @@ export type SignInState = 'idle' | 'signing-in' | 'failed';
  * answer itself (`savePendingSignIn`, src/components/LichessReturn.tsx),
  * since lichess's page cuts it off from this one, which then takes in the
  * saved account as it takes in another tab's (`AccountsSync`): here the
- * popup reads as closed at once, and the state goes back to idle.
+ * popup reads as closed at once, and the state goes back to idle. So the
+ * learner can press again while the first popup is still on lichess: each
+ * web press therefore gets a request of its own (`randomState`), whose saved
+ * sign-in replaces the earlier one, and the earlier popup's answer reads as
+ * replaced (`finishSignIn`).
  *
  * ```ts
  * const { signIn, state } = useLichessSignIn();
@@ -31,9 +35,13 @@ export type SignInState = 'idle' | 'signing-in' | 'failed';
 export function useLichessSignIn() {
   const ctrl = useController();
   const [state, setState] = useState<SignInState>('idle');
+  // The request's own until a web press; then a new one for each, which makes useAuthRequest build
+  // a new request: a new verifier and sign-in address too.
+  const [oauthState, setOauthState] = useState<string>();
   const [request, , promptAsync] = useAuthRequest(
     {
       clientId: LICHESS_CLIENT_ID,
+      state: oauthState,
       redirectUri: lichessRedirectUri(),
       responseType: ResponseType.Code,
       scopes: [],
@@ -47,6 +55,7 @@ export function useLichessSignIn() {
     if (process.env.EXPO_OS === 'web') {
       const { state: answer, codeVerifier, redirectUri } = request;
       savePendingSignIn({ state: answer, codeVerifier, redirectUri });
+      setOauthState(randomState());
     }
     try {
       const result = await promptAsync();
@@ -62,5 +71,16 @@ export function useLichessSignIn() {
       setState('failed');
     }
   };
-  return { signIn: request ? signIn : undefined, state };
+  // Not until the request for the latest state is built, so a press never reopens the last one.
+  const ready = request && (oauthState === undefined || request.state === oauthState);
+  return { signIn: ready ? signIn : undefined, state };
 }
+
+/**
+ * A new OAuth `state` for a web press: 16 random bytes from
+ * `getRandomValues`, since `randomUUID` needs a secure page.
+ */
+const randomState = () =>
+  Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');

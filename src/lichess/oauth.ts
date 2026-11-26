@@ -60,6 +60,12 @@ const PENDING = storageKey('lichess-sign-in');
 export const savePendingSignIn = (pending: PendingSignIn) =>
   writeStorage(PENDING, JSON.stringify(pending));
 
+/** The saved sign-in's fields, unchecked: an empty object where nothing waits. */
+const readPendingSignIn = () => parseStoredObject(readStorage(PENDING) ?? '');
+
+/** Whether a web sign-in waits for lichess's answer, whatever its state. */
+export const isSignInPending = () => typeof readPendingSignIn().state === 'string';
+
 /**
  * The sign-in waiting for the answer that repeats `state`, forgotten once
  * taken, so a code is traded once. None where no sign-in waits or another one
@@ -69,7 +75,7 @@ export const savePendingSignIn = (pending: PendingSignIn) =>
  * of no use without lichess's one-time code.
  */
 export function takePendingSignIn(state: string): PendingSignIn | undefined {
-  const pending = parseStoredObject(readStorage(PENDING) ?? '');
+  const pending = readPendingSignIn();
   if (pending.state !== state) return undefined;
   // Forgotten: the storage module has no removal, and empty text reads as nothing waiting.
   writeStorage(PENDING, '');

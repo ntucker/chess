@@ -37,11 +37,8 @@ export function LichessReturn() {
     >
       <View style={styles.content}>
         {outcome ? (
-          <PageIntro
-            eyebrow="lichess"
-            title={outcome.type === 'signed-in' ? 'Signed in' : 'Not signed in'}
-          >
-            {outcomeText(outcome)}
+          <PageIntro eyebrow="lichess" title={outcomeWords(outcome).title}>
+            {outcomeWords(outcome).text}
           </PageIntro>
         ) : (
           <Stack gap="2" align="center">
@@ -54,14 +51,32 @@ export function LichessReturn() {
 }
 
 /** What the popup says once the sign-in has ended (`none` goes home instead). */
-function outcomeText(outcome: Exclude<SignInOutcome, { type: 'none' }>): string {
+function outcomeWords(outcome: Exclude<SignInOutcome, { type: 'none' }>): {
+  title: string;
+  text: string;
+} {
   switch (outcome.type) {
     case 'signed-in':
-      return `Signed in as ${outcome.username}. You can close this window.`;
+      return {
+        title: 'Signed in',
+        text: `Signed in as ${outcome.username}. You can close this window.`,
+      };
     case 'refused':
-      return 'lichess was not allowed to sign you in. Close this window, and try again from the person button if you like.';
+      return {
+        title: 'Not signed in',
+        text: 'lichess was not allowed to sign you in. Close this window, and try again from the person button if you like.',
+      };
     case 'failed':
-      return 'lichess could not sign you in. Close this window and try again from the person button.';
+      return {
+        title: 'Not signed in',
+        text: 'lichess could not sign you in. Close this window and try again from the person button.',
+      };
+    case 'replaced':
+      // Not a failure: the newer window signs in.
+      return {
+        title: 'Another sign-in is open',
+        text: 'A newer sign-in replaced this one. Close this window, and finish signing in with the newer one.',
+      };
   }
 }
 
