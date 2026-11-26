@@ -73,6 +73,29 @@ describe('writeFinds', () => {
     }
   });
 
+  it('marks the mistake with its scores, then its line, in the order every lesson file keeps', () => {
+    // 4.Bxe4, Act III, where games play 4.Be2 more: the mark stores its line.
+    const afterReply = keyAfter('e4', 'c6', 'd4', 'd5', 'Bd3', 'dxe4');
+    const often = {
+      uci: uci('e4', 'c6', 'd4', 'd5', 'Bd3', 'dxe4', 'Be2'),
+      games: [9, 9, 9, 9, 9],
+    };
+    const base = lesson();
+    const variation = base.positions[keyAfter()].variation;
+    const guided = {
+      ...base,
+      positions: { ...base.positions, [afterReply]: { variation, moves: [often] } },
+    };
+    const payoff = [uci('e4', 'c6', 'd4', 'd5', 'Bd3', 'dxe4', 'Bxe4')];
+    const gain = [0.1, 0.2, 0.3, 0.4, 0.5];
+    const written = writeFinds(guided, [{ ...PAST_END, payoff, gain }]);
+    const mark = written.positions[keyAfter('e4', 'c6', 'd4', 'd5')].moves.find(
+      (move) => move.uci === PAST_END.mistake,
+    )?.mistake;
+    const line = [...PAST_END.replies, ...payoff];
+    expect(JSON.stringify(mark)).toBe(JSON.stringify({ cost: 0.3, gain, line }));
+  });
+
   it("leaves the opponent's moves past the guide's end unbooked", () => {
     // 2...d5 3.e5 c5 4.Bb5+? Nc6: 3.e5 is White's, past the end.
     const find = {
