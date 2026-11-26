@@ -1,4 +1,4 @@
-import { Pager, Stack } from '@reactive/silk-native';
+import { Pager, Stack, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 
@@ -45,6 +45,8 @@ export function PhonePages<H extends string>({
   const part = useNarrowPart();
   const sections = useSections();
   const pageStyle = [styles.page, { paddingHorizontal: bleed }];
+  // The dots sit a step up from the foot and are a step tall: a third step clears them.
+  const clearDots = { paddingBottom: 3 * useTheme().theme.semantic.space[2] };
   return (
     <Stack {...part('pages-panel', sections)}>
       {head}
@@ -62,10 +64,15 @@ export function PhonePages<H extends string>({
         <Pager.Page value={home} style={pageStyle}>
           {children}
         </Pager.Page>
-        <Pager.Page value="scoresheet" disabled={!scoresheetReachable} style={pageStyle}>
+        {/* Its table doesn't fade at its foot, so it ends above the dots. */}
+        <Pager.Page
+          value="scoresheet"
+          disabled={!scoresheetReachable}
+          style={[pageStyle, clearDots]}
+        >
           <ScoresheetPage {...scoresheet} />
         </Pager.Page>
-        {/* Over the pages' faded foot (`FadingScroll`), so a page a swipe away shows it's there. */}
+        {/* Over the panes' faded foot (`FadingScroll`), so a page a swipe away shows it's there. */}
         <Pager.Indicator testID="page-dots" />
       </Pager.Root>
     </Stack>
