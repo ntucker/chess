@@ -41,9 +41,6 @@ function upsert(entry: Entry, uci: Uci, edit: (move: LessonMove) => LessonMove =
 
 const booked = (move: LessonMove): LessonMove => ({ ...move, book: true });
 
-/** Whether the guide has no moves at `pos`: its line ended before it, or never came. */
-const pastEnd = (lesson: Lesson, pos: Chess) => !lesson.positions[positionKey(pos)]?.moves.length;
-
 /**
  * Whether `find` plays from `start`: every move legal, and each other reply
  * legal at the cue. Callers of `writeFinds` pass only finds that do; it
@@ -95,9 +92,12 @@ export function writeFinds(lesson: Lesson, finds: readonly FindFragment[]): Less
       upsert(here(), uci, edit);
       playMove(pos, uci);
     };
-    for (const uci of find.line)
-      // Past the guide's end the learner's move is booked, so a clean run plays on to the cue.
-      play(uci, pos.turn === lesson.side && pastEnd(lesson, pos) ? booked : undefined);
+    for (const uci of find.line) {
+      // Past the guide's end (no moves here, an earlier find's included), the learner's move is
+      // booked, so a clean run plays on to the cue.
+      const pastEnd = !positions[positionKey(pos)]?.moves.length;
+      play(uci, pos.turn === lesson.side && pastEnd ? booked : undefined);
+    }
     const marked = here().moves.find((move) => move.uci === find.mistake)?.mistake;
     const scores = {
       cost: thousandths(find.cost),

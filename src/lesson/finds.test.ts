@@ -26,27 +26,46 @@ const PAST_END = {
 };
 
 describe('writeFinds', () => {
-  it("books the learner's moves past the guide's end, so a clean run reaches the mistake", () => {
+  it("books the learner's moves past the guide's end, so a clean run reaches the cue", () => {
     const written = writeFinds(lesson(), [PAST_END]);
     expect(written.positions[keyAfter('e4', 'c6', 'd4')].moves).toEqual([
       { uci: uci('e4', 'c6', 'd4', 'd5'), book: true },
     ]);
-    // The line now ends before the mistake, a trap a clean run skips, instead of nowhere.
+    // The clean run plays on past the old end and stops before the opponent's mistake, as at a trap.
     expect(cleanLineEnds(written, keyAfter('e4'))).toEqual([keyAfter('e4', 'c6', 'd4', 'd5')]);
   });
 
-  it("leaves the learner's move unbooked where the guide books another", () => {
-    const guided = writeFinds(lesson(), [PAST_END]);
+  it("leaves the learner's move unbooked where the guide, or an earlier find, books another", () => {
     const other = {
       ...PAST_END,
       line: uciLine('e4', 'c6', 'd4', 'd6'),
       mistake: uci('e4', 'c6', 'd4', 'd6', 'Bd3'),
       replies: [uci('e4', 'c6', 'd4', 'd6', 'Bd3', 'Nf6')],
     };
-    const written = writeFinds(guided, [other]);
-    expect(written.positions[keyAfter('e4', 'c6', 'd4')].moves).toEqual([
+    const expected = [
       { uci: uci('e4', 'c6', 'd4', 'd5'), book: true },
       { uci: uci('e4', 'c6', 'd4', 'd6') },
+    ];
+    const oneByOne = writeFinds(writeFinds(lesson(), [PAST_END]), [other]);
+    expect(oneByOne.positions[keyAfter('e4', 'c6', 'd4')].moves).toEqual(expected);
+    const together = writeFinds(lesson(), [PAST_END, other]);
+    expect(together.positions[keyAfter('e4', 'c6', 'd4')].moves).toEqual(expected);
+  });
+
+  it("leaves the opponent's moves past the guide's end unbooked", () => {
+    // 2...d5 3.e5 c5 4.Bb5+? Nc6: 3.e5 is White's, past the end.
+    const find = {
+      ...PAST_END,
+      line: uciLine('e4', 'c6', 'd4', 'd5', 'e5', 'c5'),
+      mistake: uci('e4', 'c6', 'd4', 'd5', 'e5', 'c5', 'Bb5+'),
+      replies: [uci('e4', 'c6', 'd4', 'd5', 'e5', 'c5', 'Bb5+', 'Nc6')],
+    };
+    const written = writeFinds(lesson(), [find]);
+    expect(written.positions[keyAfter('e4', 'c6', 'd4', 'd5')].moves).toEqual([
+      { uci: uci('e4', 'c6', 'd4', 'd5', 'e5') },
+    ]);
+    expect(written.positions[keyAfter('e4', 'c6', 'd4', 'd5', 'e5')].moves).toEqual([
+      { uci: uci('e4', 'c6', 'd4', 'd5', 'e5', 'c5'), book: true },
     ]);
   });
 });
