@@ -375,8 +375,8 @@ type Meter = (typeof COLUMNS)[number]['meter'];
 function ColumnHeads({ styles }: { readonly styles: Styles }) {
   return (
     <>
-      {/* In a row's frame, so the icons sit where its meters do. */}
-      <View style={[styles.frame, STATIC.press]}>
+      {/* In a row's frame, so the icons sit where its meters do; never shrunk, as a row's meters aren't. */}
+      <View style={[styles.frame, STATIC.grow]}>
         <View style={STATIC.grow} />
         <View style={STATIC.meters}>
           {COLUMNS.map(({ meter, icon, tip }) => (
@@ -585,9 +585,9 @@ const BOOKMARK_WIDTH = 34;
 const CARD_BORDER = 1;
 
 /**
- * A density's row and meter sizes: `row` the rows' height (a phone's are 44
- * tall under a mouse, and under a finger as tall as the bookmark's room,
- * `touchTarget`).
+ * A density's sizes: `meter` each meter's width, and `row` a row's own
+ * height or padding over the frame (a phone's rows are 44 tall under a mouse;
+ * under a finger the bookmark's room makes them `touchTarget` tall).
  * `inset` is the rows' side padding, and `bookmarkInset` keeps the bookmark
  * off the card's edge, which `edge` (the card's border, if any) draws.
  */
