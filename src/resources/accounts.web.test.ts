@@ -97,7 +97,7 @@ describe('lichess account on the device', () => {
   it('keeps nothing when lichess refuses the code', async () => {
     answers = [async () => ({ ok: false, status: 400 }) as Response];
     const { controller } = newStore();
-    await expect(controller.fetch(signInLichess, GRANT)).rejects.toThrow('lichess answered 400');
+    await expect(controller.fetch(signInLichess, GRANT)).rejects.toThrow('HTTP 400');
     expect(saved()).toBeNull();
   });
 
@@ -161,7 +161,7 @@ describe('lichess account on the device', () => {
     signedIn('lip_new');
     refuse();
 
-    await expect(asked).rejects.toThrow('since signed out');
+    await expect(asked).rejects.toThrow('since replaced');
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(saved().lichess.token).toBe('lip_new');
     expect(calls.map((call) => call.init?.method)).not.toContain('DELETE');

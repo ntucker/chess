@@ -6,13 +6,13 @@ import { Image, View } from 'react-native';
 import { BackButton } from '@/components/BackButton';
 import { Eyebrow } from '@/components/Eyebrow';
 import { HeaderButton } from '@/components/HeaderButton';
-import { CHEVRON_WIDTH, type Destination, PlaceLink } from '@/components/PlaceLink';
-import { HEADER_HEIGHT } from '@/theme/sideBySide';
 import { LichessAccount } from '@/components/LichessAccount';
+import { CHEVRON_WIDTH, type Destination, PlaceLink } from '@/components/PlaceLink';
 import { SourceLink } from '@/components/SourceLink';
 import { ThemeSwitch } from '@/components/ThemeSwitch';
 import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowStyles } from '@/theme/narrow';
 import { NarrowOnly, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
+import { HEADER_HEIGHT } from '@/theme/sideBySide';
 import { fonts } from '@/theme/theme';
 
 /** Where the page is: a name, such as the lesson's line, and its parent, such as the line it branches from. */

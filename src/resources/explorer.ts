@@ -38,7 +38,9 @@ export const getExplorerCounts = new Endpoint(
       return { counts: recordedCounts(key, counts), total };
     } catch (error) {
       if (error instanceof ExplorerRefusal && lichessToken() !== token) {
-        throw new Error('lichess refused a token since signed out of', { cause: error });
+        throw new Error('lichess refused a token the learner has since replaced', {
+          cause: error,
+        });
       }
       throw error;
     }

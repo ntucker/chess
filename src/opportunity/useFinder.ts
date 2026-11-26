@@ -89,9 +89,9 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
   const result = useMemo(() => {
     if (!ask) return undefined;
     const { line, side, source, lesson } = ask;
-    const replies = storedReplies(ctrl, source, state);
+    const replies = replyStore(ctrl, source);
     const answers: Answers = {
-      replies: replies.at,
+      replies: (spot) => replies.at(spot, state),
       analysis: (spot) => ctrl.get(PositionAnalysis, analysisKey('stockfish', spot.line), state),
       guideMoves: lesson
         ? ({ key }) => {
@@ -109,7 +109,7 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
     // An answer that failed is not asked again: the walk goes on where it can.
     const isFailed = ({ kind, spot }: (typeof requests)[number]) =>
       kind === 'replies'
-        ? replies.failed(spot)
+        ? replies.failed(spot, state)
         : analysisError(ctrl, 'stockfish', spot.line, state) !== undefined;
     return {
       asking: requests.filter((request) => !isFailed(request)),
@@ -134,9 +134,9 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
   );
   useEffect(() => {
     if (!ask) return;
-    const { ask: askAt } = replyRequests(ctrl, ask.source);
+    const replies = replyStore(ctrl, ask.source);
     // A failure is stored as the answer's error, which ends asking for it.
-    for (const spot of JSON.parse(wanted) as Spot[]) void askAt(spot);
+    for (const spot of JSON.parse(wanted) as Spot[]) void replies.ask(spot);
   }, [ask, ctrl, wanted]);
 
   const failed = result?.failed ?? [];
@@ -148,7 +148,7 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
     retry:
       ask && failed.length
         ? () => {
-            const replies = replyRequests(ctrl, ask.source);
+            const replies = replyStore(ctrl, ask.source);
             for (const { kind, spot } of failed) {
               if (kind === 'replies') void replies.again(spot);
               else void ctrl.invalidate(getAnalysis, 'stockfish', spot.line);
@@ -158,41 +158,34 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
   };
 }
 
-/** The store's answers about the replies from `source`: the replies at a spot, and whether asking failed. */
-function storedReplies(ctrl: Controller, source: ReplySource, state: State<unknown>) {
+/**
+ * The replies from `source` in the store: those at a spot, whether asking for
+ * them failed, asking for them if the store lacks them, and asking again.
+ */
+function replyStore(ctrl: Controller, source: ReplySource) {
   if (source.from === 'maia') {
     const { rating } = source;
     return {
-      at: (spot: Spot): Replies | undefined => {
+      at: (spot: Spot, state: State<unknown>): Replies | undefined => {
         const shares = ctrl.getResponse(getMaiaShares, rating, spot.line, state).data;
         return shares && maiaReplies(shares);
       },
-      failed: (spot: Spot) => ctrl.getError(getMaiaShares, rating, spot.line, state) !== undefined,
-    };
-  }
-  const { band } = source;
-  return {
-    at: (spot: Spot): Replies | undefined => {
-      // Data Client types a schema-less endpoint's stored answer as undefined.
-      const counted = ctrl.getResponse(getExplorerCounts, band, spot.key, state).data as
-        ExplorerCounts | undefined;
-      return counted && repliesFrom(spot.key, counted.counts, MIN_GAMES, counted.total);
-    },
-    failed: (spot: Spot) => ctrl.getError(getExplorerCounts, band, spot.key, state) !== undefined,
-  };
-}
-
-/** Asking for the replies from `source`: at a spot if the store lacks them, or again after a failure. */
-function replyRequests(ctrl: Controller, source: ReplySource) {
-  if (source.from === 'maia') {
-    const { rating } = source;
-    return {
+      failed: (spot: Spot, state: State<unknown>) =>
+        ctrl.getError(getMaiaShares, rating, spot.line, state) !== undefined,
       ask: (spot: Spot) => ctrl.fetchIfStale(getMaiaShares, rating, spot.line),
       again: (spot: Spot) => ctrl.invalidate(getMaiaShares, rating, spot.line),
     };
   }
   const { band } = source;
   return {
+    at: (spot: Spot, state: State<unknown>): Replies | undefined => {
+      // Data Client types a schema-less endpoint's stored answer as undefined.
+      const counted = ctrl.getResponse(getExplorerCounts, band, spot.key, state).data as
+        ExplorerCounts | undefined;
+      return counted && repliesFrom(spot.key, counted.counts, MIN_GAMES, counted.total);
+    },
+    failed: (spot: Spot, state: State<unknown>) =>
+      ctrl.getError(getExplorerCounts, band, spot.key, state) !== undefined,
     ask: (spot: Spot) => ctrl.fetchIfStale(getExplorerCounts, band, spot.key),
     again: (spot: Spot) => ctrl.invalidate(getExplorerCounts, band, spot.key),
   };

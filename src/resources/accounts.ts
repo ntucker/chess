@@ -8,6 +8,7 @@ import {
   parseAccounts,
 } from '@/accounts/accounts';
 import { readStorage, storageKey, writeStorage } from '@/context/storage';
+import { fetchOk } from '@/files/fetchOk';
 import { ExplorerRefusal } from '@/lichess/explorer';
 import { LICHESS, LICHESS_CLIENT_ID } from '@/lichess/oauth';
 
@@ -81,13 +82,11 @@ export const signInLichess = new Endpoint(
       }),
     });
     const token = granted.access_token;
+    if (typeof token !== 'string') throw new Error('lichess answered without a token');
     const { username } = await lichessJson<{ username: string }>('/api/account', {
       headers: { Authorization: `Bearer ${token}` },
     });
-    // Checked as a save is read back (`parseAccounts`), so a malformed answer saves nothing.
-    if (typeof token !== 'string' || typeof username !== 'string') {
-      throw new Error('lichess answered without an account');
-    }
+    if (typeof username !== 'string') throw new Error('lichess answered without a name');
     return save({ ...saved(), lichess: { username, token } });
   },
   { schema: SavedAccounts, sideEffect: true, name: 'signInLichess' },
@@ -149,8 +148,7 @@ export class LichessRefusals implements Manager {
   cleanup() {}
 }
 
-async function lichessJson<T>(path: string, init: RequestInit): Promise<T> {
-  const response = await fetch(`${LICHESS}${path}`, init);
-  if (!response.ok) throw new Error(`lichess answered ${response.status} for ${path}`);
-  return (await response.json()) as T;
+/** lichess's answer at `path`, unchecked: the caller checks the fields it reads. */
+async function lichessJson<T>(path: string, init: RequestInit): Promise<Partial<T>> {
+  return (await (await fetchOk(`${LICHESS}${path}`, init)).json()) as Partial<T>;
 }

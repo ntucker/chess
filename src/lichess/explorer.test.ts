@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
 
 import { lineKeys } from '@/lesson/select';
 
@@ -45,20 +45,30 @@ describe('pacedExplorer', () => {
     expect(waits[2]).toBeGreaterThan(2 * REQUEST_INTERVAL_MS - 100);
   });
 
-  it('waits a minute after a 429, every caller, and asks again; fails on any other refusal', async () => {
-    const statuses = [429, 200, 200];
-    const waits: number[] = [];
-    const ask = pacedExplorer({
-      fetch: async () => answer(statuses.shift()!, BODY),
-      sleep: async (ms) => void waits.push(ms),
-    });
-    expect((await ask(START, 1400)).total).toBe(20);
-    expect(waits).toContain(60_000);
-    // A request asked for after the 429 waits out the minute too.
-    waits.length = 0;
-    await ask(START, 1600);
-    expect(waits[0]).toBeGreaterThan(55_000);
+  it('holds every caller a minute after a 429, those already waiting too, then asks again', async () => {
+    jest.useFakeTimers();
+    try {
+      const statuses = [429, 200, 200];
+      const sent: number[] = [];
+      const start = Date.now();
+      const ask = pacedExplorer({
+        fetch: async () => {
+          sent.push(Date.now() - start);
+          return answer(statuses.shift()!, BODY);
+        },
+      });
+      const first = ask(START, 1400);
+      // Waiting for its turn, 2.5 s on, when the 429 comes.
+      const second = ask(START, 1600);
+      await jest.advanceTimersByTimeAsync(70_000);
+      expect([(await first).total, (await second).total]).toEqual([20, 20]);
+      expect(sent).toEqual([0, 60_000, 60_000 + REQUEST_INTERVAL_MS]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 
+  it('fails on any other refusal', async () => {
     const refusing = pacedExplorer({ fetch: async () => answer(401), sleep: async () => {} });
     await expect(refusing(START, 1400)).rejects.toThrow('Explorer answered 401');
   });
