@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 import { newController } from '@/resources/testing';
 
@@ -17,6 +17,9 @@ let answers: (() => Promise<Response>)[] = [];
 const json = (body: object) => async () =>
   ({ ok: true, status: 200, json: async () => body }) as Response;
 
+afterEach(() => {
+  jest.useRealTimers();
+});
 beforeEach(() => {
   localStorage.clear();
   calls = [];
@@ -35,6 +38,14 @@ describe('a web sign-in waiting for lichess', () => {
     expect(takePendingSignIn('abc')).toEqual(PENDING);
     expect(takePendingSignIn('abc')).toBeUndefined();
     expect(takePendingSignIn('')).toBeUndefined();
+  });
+
+  it('waits however long the learner takes on lichess', () => {
+    // lichess's one-time code expires on its side; a slow login (two-factor, a reset) still finishes.
+    jest.useFakeTimers();
+    savePendingSignIn(PENDING);
+    jest.advanceTimersByTime(60 * 60 * 1000);
+    expect(takePendingSignIn('abc')).toEqual(PENDING);
   });
 
   it('is replaced by a later sign-in', () => {
