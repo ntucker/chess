@@ -69,7 +69,7 @@ const REPLIES_AT_ONCE = 4;
  * The opportunity finder run from `ask` in the app: a pure function of the
  * answers the store has (the replies from `ask.source`, Stockfish lite's
  * analyses), worked out again as they arrive, so nothing is stored but the
- * answers. It asks for the missing ones: Maia's a few at a time, and
+ * answers. It asks for the missing ones: the replies a few at a time, and
  * Stockfish's one at a time behind every search a screen shows
  * (`getAnalysisBehind`), so the board's own searches never wait for it.
  * Pass no `ask` while the screen isn't in front: nothing is worked out or
@@ -134,10 +134,9 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
   );
   useEffect(() => {
     if (!ask) return;
-    for (const spot of JSON.parse(wanted) as Spot[]) {
-      // A failure is stored as the answer's error, which ends asking for it.
-      void askReplies(ctrl, ask.source, spot);
-    }
+    const { ask: askAt } = replyRequests(ctrl, ask.source);
+    // A failure is stored as the answer's error, which ends asking for it.
+    for (const spot of JSON.parse(wanted) as Spot[]) void askAt(spot);
   }, [ask, ctrl, wanted]);
 
   const failed = result?.failed ?? [];
@@ -149,8 +148,9 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
     retry:
       ask && failed.length
         ? () => {
+            const replies = replyRequests(ctrl, ask.source);
             for (const { kind, spot } of failed) {
-              if (kind === 'replies') void askReplies(ctrl, ask.source, spot, true);
+              if (kind === 'replies') void replies.again(spot);
               else void ctrl.invalidate(getAnalysis, 'stockfish', spot.line);
             }
           }
@@ -182,16 +182,18 @@ function storedReplies(ctrl: Controller, source: ReplySource, state: State<unkno
   };
 }
 
-/** Asks for the replies at `spot` from `source` if the store lacks them, or `again`. */
-function askReplies(ctrl: Controller, source: ReplySource, spot: Spot, again = false) {
+/** Asking for the replies from `source`: at a spot if the store lacks them, or again after a failure. */
+function replyRequests(ctrl: Controller, source: ReplySource) {
   if (source.from === 'maia') {
-    const args = [source.rating, spot.line] as const;
-    return again
-      ? ctrl.invalidate(getMaiaShares, ...args)
-      : ctrl.fetchIfStale(getMaiaShares, ...args);
+    const { rating } = source;
+    return {
+      ask: (spot: Spot) => ctrl.fetchIfStale(getMaiaShares, rating, spot.line),
+      again: (spot: Spot) => ctrl.invalidate(getMaiaShares, rating, spot.line),
+    };
   }
-  const args = [source.band, spot.key] as const;
-  return again
-    ? ctrl.invalidate(getExplorerCounts, ...args)
-    : ctrl.fetchIfStale(getExplorerCounts, ...args);
+  const { band } = source;
+  return {
+    ask: (spot: Spot) => ctrl.fetchIfStale(getExplorerCounts, band, spot.key),
+    again: (spot: Spot) => ctrl.invalidate(getExplorerCounts, band, spot.key),
+  };
 }

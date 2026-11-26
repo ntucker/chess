@@ -84,6 +84,10 @@ export const signInLichess = new Endpoint(
     const { username } = await lichessJson<{ username: string }>('/api/account', {
       headers: { Authorization: `Bearer ${token}` },
     });
+    // Checked as a save is read back (`parseAccounts`), so a malformed answer saves nothing.
+    if (typeof token !== 'string' || typeof username !== 'string') {
+      throw new Error('lichess answered without an account');
+    }
     return save({ ...saved(), lichess: { username, token } });
   },
   { schema: SavedAccounts, sideEffect: true, name: 'signInLichess' },
@@ -91,8 +95,9 @@ export const signInLichess = new Endpoint(
 
 /**
  * Forgets the lichess account on the device, and asks lichess to revoke its
- * token. Signing out works offline too: then the token stays valid on
- * lichess until it expires, but the device no longer has it.
+ * token without waiting for the answer. Signing out works offline too: then
+ * the token stays valid on lichess until it expires, but the device no
+ * longer has it.
  *
  * ```ts
  * await ctrl.fetch(signOutLichess);
@@ -101,14 +106,13 @@ export const signInLichess = new Endpoint(
 export const signOutLichess = new Endpoint(
   async () => {
     const { lichess, ...rest } = saved();
-    const after = save(rest);
     if (lichess) {
-      await fetch(`${LICHESS}/api/token`, {
+      void fetch(`${LICHESS}/api/token`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${lichess.token}` },
       }).catch(() => undefined);
     }
-    return after;
+    return save(rest);
   },
   { schema: SavedAccounts, sideEffect: true, name: 'signOutLichess' },
 );
@@ -126,7 +130,8 @@ export class AccountsSync extends StorageSync {
 /**
  * Signs out of lichess when its explorer refuses the account's token (401:
  * the learner revoked it on lichess, or it expired), so the finder goes back
- * to Maia's estimates rather than failing at every position.
+ * to Maia's estimates rather than failing at every position. Only a refusal
+ * of the token saved now arrives as one (`getExplorerCounts`).
  */
 export class LichessRefusals implements Manager {
   middleware: Middleware = (controller) => (next) => (action) => {

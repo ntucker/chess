@@ -10,11 +10,11 @@ export const LICHESS = 'https://lichess.org';
  */
 export const LICHESS_CLIENT_ID = 'opening-night';
 
-/** lichess's OAuth pages (`AuthSession.DiscoveryDocument`). */
-export const LICHESS_DISCOVERY = {
-  authorizationEndpoint: `${LICHESS}/oauth`,
-  tokenEndpoint: `${LICHESS}/api/token`,
-};
+/**
+ * lichess's sign-in page (`AuthSession.DiscoveryDocument`). The code is
+ * traded for a token by `signInLichess`, which also reads the account.
+ */
+export const LICHESS_DISCOVERY = { authorizationEndpoint: `${LICHESS}/oauth` };
 
 /**
  * Where lichess sends the learner back after signing in: the app's

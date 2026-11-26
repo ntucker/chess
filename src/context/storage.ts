@@ -1,7 +1,8 @@
 // What the app remembers on the device, in localStorage (on Android,
 // expo-sqlite provides it; see src/app/_layout.tsx). This file is the only
-// code that touches it: the settings (SettingsProvider) and lesson progress
-// (src/resources/progress.ts) are kept here.
+// code that touches it: the settings (SettingsProvider), lesson progress
+// (src/resources/progress.ts) and the learner's lichess sign-in
+// (src/resources/accounts.ts) are kept here.
 
 // Pull request previews share the live site's origin, so their builds set a
 // prefix (.github/workflows/web.yml) to keep their own saves.

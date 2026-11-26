@@ -139,4 +139,31 @@ describe('lichess account on the device', () => {
     expect((await shown())?.lichess).toBeUndefined();
     expect(calls.at(-1)?.init?.method).toBe('DELETE');
   });
+
+  it('keeps an account signed in since when a request from before it is refused', async () => {
+    const signedIn = (token: string) =>
+      localStorage.setItem(
+        'accounts',
+        JSON.stringify({ version: 1, lichess: { username: 'learner', token } }),
+      );
+    signedIn('lip_old');
+    let refuse: (() => void) | undefined;
+    answers = [
+      () =>
+        new Promise((resolve) => {
+          refuse = () => resolve({ ok: false, status: 401 } as Response);
+        }),
+    ];
+    const { controller } = newStore();
+    const asked = controller.fetch(getExplorerCounts, 1400, CASTLES);
+    // Waits for lichess's pace to let the request out.
+    while (!refuse) await new Promise((resolve) => setTimeout(resolve, 20));
+    signedIn('lip_new');
+    refuse();
+
+    await expect(asked).rejects.toThrow('since signed out');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(saved().lichess.token).toBe('lip_new');
+    expect(calls.map((call) => call.init?.method)).not.toContain('DELETE');
+  });
 });
