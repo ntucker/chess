@@ -37,16 +37,26 @@ describe('writeFinds', () => {
   it("books the learner's moves past the guide's end, so a clean run reaches the cue", () => {
     const written = writeFinds(lesson(), [PAST_END]);
     expect(written.positions[keyAfter('e4', 'c6', 'd4')].moves).toEqual([
-      { uci: uci('e4', 'c6', 'd4', 'd5'), book: true },
+      { uci: uci('e4', 'c6', 'd4', 'd5'), book: true, found: true },
     ]);
     // The clean run plays on past the old end and stops before the opponent's mistake, as at a trap.
     expect(cleanLineEnds(written, keyAfter('e4'))).toEqual([keyAfter('e4', 'c6', 'd4', 'd5')]);
   });
 
+  it("marks the moves it books as the opportunity's, and leaves the guide's book moves the guide's", () => {
+    const written = writeFinds(lesson(), [PAST_END]);
+    // 1...c6, on the way, was already the guide's book move.
+    expect(written.positions[keyAfter('e4')].moves).toEqual([{ uci: uci('e4', 'c6'), book: true }]);
+    // The reply that punishes 3.Bd3.
+    expect(written.positions[keyAfter('e4', 'c6', 'd4', 'd5', 'Bd3')].moves).toEqual([
+      { uci: uci('e4', 'c6', 'd4', 'd5', 'Bd3', 'dxe4'), book: true, found: true },
+    ]);
+  });
+
   it("leaves a later call's learner move unbooked where an earlier call's find booked another", () => {
     const guided = writeFinds(lesson(), [PAST_END]);
     expect(writeFinds(guided, [BESIDE]).positions[keyAfter('e4', 'c6', 'd4')].moves).toEqual([
-      { uci: uci('e4', 'c6', 'd4', 'd5'), book: true },
+      { uci: uci('e4', 'c6', 'd4', 'd5'), book: true, found: true },
       { uci: uci('e4', 'c6', 'd4', 'd6') },
     ]);
   });
@@ -76,7 +86,7 @@ describe('writeFinds', () => {
       { uci: uci('e4', 'c6', 'd4', 'd5', 'e5') },
     ]);
     expect(written.positions[keyAfter('e4', 'c6', 'd4', 'd5', 'e5')].moves).toEqual([
-      { uci: uci('e4', 'c6', 'd4', 'd5', 'e5', 'c5'), book: true },
+      { uci: uci('e4', 'c6', 'd4', 'd5', 'e5', 'c5'), book: true, found: true },
     ]);
   });
 });

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Text, Tooltip, useTheme } from '@reactive/silk-native';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 
 import { Notation } from '@/components/Notation';
@@ -51,22 +51,22 @@ export function Tip({ tip, children, style, focusable, open, onOpenChange }: Pro
   );
 }
 
-/** The mark that something has a tip to show, `size` to suit the text beside it. */
+/**
+ * The mark that something has a tip to show, `size` to suit the text beside
+ * it: an info mark, or `name`, an icon that names what the tip explains.
+ */
 export function InfoMark({
   size,
+  name = 'information-circle-outline',
   style,
 }: {
   readonly size: number;
+  readonly name?: ComponentProps<typeof Ionicons>['name'];
   readonly style?: StyleProp<TextStyle>;
 }) {
   const { theme } = useTheme();
   return (
-    <Ionicons
-      name="information-circle-outline"
-      size={size}
-      color={theme.semantic.color.textSecondary}
-      style={style}
-    />
+    <Ionicons name={name} size={size} color={theme.semantic.color.textSecondary} style={style} />
   );
 }
 
@@ -99,4 +99,4 @@ const HEADING_ROW: ViewStyle = {
   flexShrink: 1,
 };
 /** The info mark, about as tall as an eyebrow's capitals. */
-const HEADING_INFO_SIZE = 13;
+export const HEADING_INFO_SIZE = 13;

@@ -5,7 +5,7 @@ import { type EvaluationEngine, finalOnly } from '@/evaluation/evaluation';
 import type { Ply } from '@/game/replay';
 import { getAnalysis, storedAnalyses } from '@/resources/analysis';
 
-import { labelMove, type MoveQuality, refutation } from './quality';
+import { type BookLabels, labelMove, type MoveQuality, refutation } from './quality';
 
 /** Each move's label, and the reply that punishes it, if one clearly does. */
 export interface MoveJudgements {
@@ -25,8 +25,9 @@ export interface MoveJudgements {
  * mistake or blunder comes from the same analysis of the position after it,
  * so it shows with the label.
  *
- * A move `book` marks (`book[n]` for the nth move) is labelled `book` at once,
- * since a lesson's guide recommends it; the engine never judges it.
+ * A move `book` labels (`book[n]` for the nth move) takes that label at once
+ * (`BookLabel`: the guide's book move, or an opportunity's); the engine never
+ * judges it.
  *
  * Only the move leading to `plies[shown]` (the board's) asks for its
  * analyses: a search takes seconds on a phone, and the engine runs the
@@ -42,7 +43,7 @@ export function useMoveQualities(
   plies: readonly Ply[],
   shown: number | null,
   engine: EvaluationEngine,
-  book: readonly boolean[] = [],
+  book: BookLabels = [],
 ): MoveJudgements {
   const state = use(StateContext);
   const ctrl = useController();

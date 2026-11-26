@@ -6,7 +6,7 @@ import { nextSearch, type OrderInput } from './order';
 import { bookMove, listing, partial, waitingMove } from './review.fixture';
 
 /** Six moves, the first two from the guide, the rest not judged yet; the learner plays White. */
-const book = [true, true];
+const book = ['book', 'book'] as const;
 const moves = [bookMove(0), bookMove(1), ...[2, 3, 4, 5].map((ply) => waitingMove(ply))];
 
 /** A sketch where White's expected score is `score`. */

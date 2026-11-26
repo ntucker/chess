@@ -5,7 +5,7 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import type { Uci } from '@/lesson/lesson';
+import type { Lesson, Uci } from '@/lesson/lesson';
 import { readShippedLesson, uciLine } from '@/lesson/lesson.fixture';
 import { lessonOpportunities } from '@/lesson/opportunities';
 import type { Find } from '@/opportunity/finder';
@@ -78,6 +78,27 @@ const MATE: Find = {
   payoff: [],
 };
 
+/** The list with one find from elsewhere, `FIND` costing `cost`, as its last row. */
+const foundAt = (cost: number): Partial<Props> => ({
+  finder: { ...DONE, from: 'elsewhere', run: { finds: [{ ...FIND, cost }], running: false } },
+});
+
+/** `lesson` with no cost on any marked mistake, as a trap is before the importer measures it. */
+const unjudged = (lesson: Lesson): Lesson => ({
+  ...lesson,
+  positions: Object.fromEntries(
+    Object.entries(lesson.positions).map(([key, entry]) => [
+      key,
+      {
+        ...entry,
+        moves: entry.moves.map(({ mistake, ...move }) =>
+          mistake ? { ...move, mistake: { ...mistake, cost: undefined } } : move,
+        ),
+      },
+    ]),
+  ),
+});
+
 /** The finder's button, named by its tooltip. */
 const FIND_TIP = 'Find opportunities from this position';
 /** A row's bookmark, saving the find or forgetting it, named by its tooltip. */
@@ -141,6 +162,45 @@ describe('OpportunityList', () => {
     expect(bg5).toMatch(
       /^6\.Bg5, after 5\.d3 Bc5, reached in \d+% of games, played 15% of the time, punished with mate$/,
     );
+  });
+
+  it("names each meter's column in its tooltip, over rows only", () => {
+    const columns = [
+      'Reached: how often',
+      'Played: how often',
+      'Payoff: the winning chances the mistake gives away',
+    ];
+    const shown = text({});
+    for (const column of columns) expect(shown).toContain(column);
+    // Each takes keyboard focus, which opens its tip.
+    const focusable = render({}, (host) =>
+      [...host.querySelectorAll('[tabindex="0"]')].map((el) => el.textContent ?? ''),
+    );
+    for (const column of columns)
+      expect(focusable.some((tip) => tip.startsWith(column))).toBe(true);
+    // A lesson that marks no mistake, with nothing saved or found: no rows, so no columns.
+    const antiLondon = readShippedLesson('anti-london');
+    const empty = text({ lesson: antiLondon });
+    for (const column of columns) expect(empty).not.toContain(column);
+    // Its saved or found finds alone are rows too.
+    const saved = { ...NONE_SAVED, finds: [savedFind(FIND, DONE.source)] };
+    expect(text({ lesson: antiLondon, saved })).toContain(columns[0]);
+    const found = { ...DONE, run: { finds: [FIND], running: false } };
+    expect(text({ lesson: antiLondon, finder: found })).toContain(columns[0]);
+  });
+
+  it('says the payoff a row gives away, as its cell shows it', () => {
+    const said = (cost: number) => render(foundAt(cost), labelsIn).at(-1);
+    expect(said(0.17)).toContain('gives away 17%');
+    expect(said(0.001)).toContain('gives away 0%');
+  });
+
+  it("shows a dash for the payoff only where the mistake isn't judged", () => {
+    const payoff = (props: Partial<Props>) =>
+      render(props, (host) => rowsIn(host).at(-1)!.textContent);
+    expect(payoff(foundAt(0.17))).toMatch(/\u221217%$/);
+    expect(payoff(foundAt(0.001))).toMatch(/0%$/);
+    expect(payoff({ lesson: unjudged(readShippedLesson('london')) })).toMatch(/\u2013$/);
   });
 
   it("plays a row's line when it is pressed", () => {
@@ -218,10 +278,10 @@ describe('OpportunityList', () => {
     expect(searching).toContain('the first finds take a few minutes');
     expect(searching).not.toContain('No opportunity found');
     expect(text({})).toContain('No opportunity found from here.');
-    const elsewhere = render(
-      { finder: { ...DONE, from: 'elsewhere', run: { finds: [FIND], running: false } } },
-      (host) => ({ text: host.textContent ?? '', labels: labelsIn(host) }),
-    );
+    const elsewhere = render(foundAt(FIND.cost), (host) => ({
+      text: host.textContent ?? '',
+      labels: labelsIn(host),
+    }));
     expect(elsewhere.text).toContain('From another position');
     expect(elsewhere.labels.at(-1)).toMatch(/^7\.\.\.Bg4/);
     // A run whose only find the lesson already lists found something: no "nothing found".

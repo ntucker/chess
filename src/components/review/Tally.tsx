@@ -8,7 +8,7 @@ import { haptic } from '@/components/haptics';
 import { qualityTip, TippedBadge } from '@/components/QualityBadge';
 import { Sheet } from '@/components/Sheet';
 import { type Color, opposite } from '@/game/replay';
-import { LABELS_BEST_FIRST, type Tally } from '@/review/review';
+import { LABELS_BEST_FIRST, LISTED_WHEN_COUNTED, type Tally } from '@/review/review';
 import type { Review } from '@/review/useReview';
 import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
 import { qualityLooks } from '@/theme/moveQuality';
@@ -16,6 +16,15 @@ import { fonts } from '@/theme/theme';
 
 /** How many labels a row of a narrow page's grid holds. */
 const COLUMNS = 3;
+
+/**
+ * The labels the tally lists for `sides`' counts: every label, except that
+ * an opportunity's move (`LISTED_WHEN_COUNTED`) is listed only where counted.
+ */
+const listedLabels = (...sides: Tally[]) =>
+  LABELS_BEST_FIRST.filter(
+    (quality) => !LISTED_WHEN_COUNTED.has(quality) || sides.some((counts) => counts[quality]),
+  );
 
 interface Props {
   readonly tally: Review['tally'];
@@ -73,7 +82,7 @@ function TallyTable({ tally, learner }: Props) {
           </Eyebrow>
         ))}
       </View>
-      {LABELS_BEST_FIRST.map((quality) => (
+      {listedLabels(...sides).map((quality) => (
         <View key={quality} role="row" style={styles.row}>
           <Label quality={quality} dim={sides.every((counts) => !counts[quality])} />
           {sides.map((counts, n) => (
@@ -87,8 +96,9 @@ function TallyTable({ tally, learner }: Props) {
 
 /** One side's counts in `COLUMNS` columns, as a phone has room for. */
 function TallyGrid({ counts }: { readonly counts: Tally }) {
-  const rows = Array.from({ length: Math.ceil(LABELS_BEST_FIRST.length / COLUMNS) }, (_, row) =>
-    LABELS_BEST_FIRST.slice(row * COLUMNS, (row + 1) * COLUMNS),
+  const labels = listedLabels(counts);
+  const rows = Array.from({ length: Math.ceil(labels.length / COLUMNS) }, (_, row) =>
+    labels.slice(row * COLUMNS, (row + 1) * COLUMNS),
   );
   return (
     <View>
@@ -99,6 +109,10 @@ function TallyGrid({ counts }: { readonly counts: Tally }) {
               <Label quality={quality} dim={!counts[quality]} />
               <Count count={counts[quality]} />
             </View>
+          ))}
+          {/* A short last row keeps its cells in the columns above. */}
+          {Array.from({ length: COLUMNS - row.length }, (_, n) => (
+            <View key={n} style={styles.cell} />
           ))}
         </View>
       ))}

@@ -164,6 +164,14 @@ export interface LessonMove<I = Idea> {
    * Only the learner's moves are book moves.
    */
   readonly book?: boolean;
+  /**
+   * The book move comes from an opportunity (docs/plans/opportunities.md),
+   * not the guide: the finder's tree writer added or booked it
+   * (`writeFinds` in ./finds.ts), on the way to a cue or punishing it. It
+   * plays as any book move does, and is labelled as an opportunity's move
+   * so the learner can tell it from the guide's line. Only on book moves.
+   */
+  readonly found?: boolean;
   /** How the study rates this move among the good ones (a "choice guide"). */
   readonly risk?: Risk;
   /**

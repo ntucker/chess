@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { type IconAction, IconActions } from '@/components/IconActions';
 import { Tip } from '@/components/Tip';
+import { ANSWER_OWNERS } from '@/review/retry';
 import { TOUCH_TARGET } from '@/theme/touch';
 
 import type { ReviewView } from './reviewView';
@@ -20,7 +21,10 @@ interface Action extends IconAction {
  * (`Moment.canRetry`); Show best there too, until the answer is revealed.
  */
 function retryActions({ moment, retry, showAnswer }: Props): readonly Action[] {
-  const best = moment.answer?.guide ? "the guide's move" : "Stockfish's best move";
+  const { answer } = moment;
+  const best = answer?.guide
+    ? `${ANSWER_OWNERS[answer.quality].within} move`
+    : "Stockfish's best move";
   return [
     {
       icon: 'refresh',

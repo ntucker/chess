@@ -108,7 +108,7 @@ describe('modeReducer', () => {
 describe('moveKinds', () => {
   it("names each move by who played it, and the learner's by the guide", () => {
     const plies = replay(uciLine('e4', 'c6', 'd4', 'e6'));
-    expect(moveKinds(plies, 'black', [false, true, false, false], 0)).toEqual([
+    expect(moveKinds(plies, 'black', [undefined, 'book', undefined, undefined], 0)).toEqual([
       'opponent',
       'book',
       'opponent',
@@ -118,13 +118,9 @@ describe('moveKinds', () => {
 
   it("counts the moves that pick the opening as no move of the learner's", () => {
     const plies = replay(uciLine('d4', 'd5', 'c4', 'c6', 'Nf3'));
-    expect(moveKinds(plies, 'black', [false, true, false, true, false], 3)).toEqual([
-      'opponent',
-      'opponent',
-      'opponent',
-      'book',
-      'opponent',
-    ]);
+    expect(moveKinds(plies, 'black', [undefined, 'book', undefined, 'book', undefined], 3)).toEqual(
+      ['opponent', 'opponent', 'opponent', 'book', 'opponent'],
+    );
   });
 });
 
