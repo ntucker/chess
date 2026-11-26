@@ -4,6 +4,7 @@
  * win-chance curve the app's evaluations use: a side's win percent is its
  * expected score times 100.
  */
+import type { BookLabels } from '@/analysis/quality';
 import type { FinalAnalysis } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
@@ -45,7 +46,7 @@ export const LEAST_COUNTED = 8;
 export function gameAccuracy(
   moves: readonly ReviewMove[],
   analyses: readonly (FinalAnalysis | undefined)[],
-  book: readonly boolean[],
+  book: BookLabels,
   side: Color,
   failed: ReadonlySet<number>,
 ): number | 'brief' | undefined {

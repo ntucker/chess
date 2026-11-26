@@ -2,6 +2,7 @@ Lesson files (format: `src/lesson/lesson.ts`), registered in `src/resources/less
 
 - Every lesson file is written by `yarn import-study <id>` (`scripts/import-study/`), which also writes `index.json`: what the start position lists before a lesson loads, the lines that pick each lesson, and their line ends for the passed mark. Rerun the importer rather than editing them; `yarn index-lessons` rewrites `index.json` alone from the lesson files.
 - A trap is a move in the guide tree with a `mistake` marker (format 4). Its line is the marker's `line` (the moves after it) where stored, else the tree from that move on by the guide's choice rule (`mistakeLine` in `src/lesson/mistakes.ts`); `line` is stored only where that rule would play another, and a note about it names the move with a `{ "type": "mistake", "move": <uci> }` idea. The learner's punishing replies are book moves where the guide books no other there; the side that falls in plays ordinary ones. Only traps that keep their mark add moves: the importer drops the moves of any trap the engine check or the checker unmarks by building the lesson again.
+- A book move the opportunity finder wrote (a recipe with `opportunities`; `writeFinds` in `src/lesson/finds.ts`) carries `found: true`: the app labels it an opportunity's move, not the guide's book move. It still plays as a book move, so a clean Practice run passes it. The guide's own book moves along a find's line stay unmarked.
 
 Tests use a small hand-made lesson instead, `src/lesson/fixtures/caro-kann-sample.json`, which the app doesn't ship.
 

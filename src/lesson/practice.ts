@@ -4,6 +4,7 @@
  * "passed" mark needs (tech plan section 6): the moves alone can't tell it,
  * since a slip taken back leaves only book moves behind.
  */
+import type { BookLabels } from '@/analysis/quality';
 import type { GameState } from '@/game/game';
 import type { Color, Ply } from '@/game/replay';
 
@@ -62,7 +63,7 @@ export type MoveKind = 'opponent' | 'book' | 'slip';
 export const moveKinds = (
   plies: readonly Ply[],
   side: Color,
-  book: readonly boolean[],
+  book: BookLabels,
   picks: number,
 ): MoveKind[] =>
   plies

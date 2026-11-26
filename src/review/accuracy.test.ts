@@ -83,7 +83,7 @@ describe('gameAccuracy', () => {
   it('leaves out book, forced and failed moves, and gives no number under 8 judged moves', () => {
     expect(gameAccuracy(game(12), finals(...gameScores(12)), [], 'white', none)).toBe('brief');
     // One book and one forced move leave White seven of nine.
-    const book = [true];
+    const book = ['book'] as const;
     const someLeftOut = [bookMove(0), ...moves.slice(1, 2), forcedMove(2), ...moves.slice(3)];
     expect(gameAccuracy(someLeftOut, analyses, book, 'white', none)).toBe('brief');
     expect(gameAccuracy(someLeftOut, analyses, book, 'black', none)).toBe(100);
@@ -107,7 +107,7 @@ describe('gameAccuracy', () => {
   });
 
   it("ignores analyses of positions it doesn't search, so a game's searches can't change it", () => {
-    const book = [true, true];
+    const book = ['book', 'book'] as const;
     const fromBook = [bookMove(0), bookMove(1), ...game(20, 6).slice(2)];
     const scores = finals(...gameScores(20, 6));
     const searchedStart = [listing(['e2e4', 0.9]), ...scores.slice(1)];

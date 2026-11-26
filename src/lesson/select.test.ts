@@ -267,15 +267,28 @@ describe('guideMove', () => {
 });
 
 describe('bookMoves', () => {
-  it("marks the learner's guide moves, not the opponent's or moves off the guide", () => {
+  it("labels the learner's guide moves, not the opponent's or moves off the guide", () => {
     expect(bookMoves(SAMPLE, uciLine(...ADVANCE, 'a6'))).toEqual([
-      false,
-      true,
-      false,
-      true,
-      false,
-      false,
+      undefined,
+      'book',
+      undefined,
+      'book',
+      undefined,
+      undefined,
     ]);
+  });
+
+  it("labels a book move an opportunity's line added as the opportunity's", () => {
+    const key = keyAfter('e4');
+    const at = SAMPLE.positions[key];
+    const found = {
+      ...SAMPLE,
+      positions: {
+        ...SAMPLE.positions,
+        [key]: { ...at, moves: at.moves.map((move) => ({ ...move, found: move.book })) },
+      },
+    };
+    expect(bookMoves(found, uciLine('e4', 'c6'))).toEqual([undefined, 'opportunity']);
   });
 });
 

@@ -15,18 +15,19 @@ import { StyleSheet, View, type ViewStyle } from 'react-native';
 import { candidateTone } from '@/lesson/drawings';
 import { shownRows } from '@/lesson/guidance';
 import type { PositionKey, Uci } from '@/lesson/lesson';
-import type { Candidate } from '@/lesson/select';
+import { bookLabel, type Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { Notation } from '@/components/Notation';
 import { type EngineVerdict, lostPercent, percent } from '@/analysis/quality';
-import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
+import { qualityTip, TippedBadge, verdictText } from '@/components/QualityBadge';
 import { HeadingTip, Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
 import { NARROW_CSS_LOADS, spokenOnly } from '@/theme/narrow';
 import type { Density } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
+import { qualityLooks } from '@/theme/moveQuality';
 
 import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMark';
 import { LOADING } from './status';
@@ -335,13 +336,15 @@ function Row({
   // The board marks Stockfish's best, the top move listed beside the guide's.
   const hollow = candidate.rare || (engine && !main && !topEngine);
   const point = () => onPoint(move.uci);
+  // The guide's book move, or one an opportunity's line adds.
+  const book = bookLabel(move);
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={[
         san,
-        move.book && 'book move',
+        book && qualityLooks[book].name,
         share !== undefined && `${percent(share)} of games`,
         topEngine ? TOP_ENGINE_MOVE : engine?.description,
         verdict && verdictText(verdict),
@@ -383,7 +386,9 @@ function Row({
           <Text role="body" style={styles.san} {...SHRINK_TO_LINE}>
             <Notation>{san}</Notation>
           </Text>
-          {move.book ? <QualityBadge quality="book" size={styles.badgeSize} /> : null}
+          {book ? (
+            <TippedBadge quality={book} size={styles.badgeSize} tip={qualityTip(book)} />
+          ) : null}
           {/* Each badge says what it means on a resting mouse or a tap; the row's label says it aloud. */}
           {topEngine ? (
             <TippedBadge quality="best" size={styles.badgeSize} tip={TOP_ENGINE_TIP} />

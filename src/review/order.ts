@@ -4,6 +4,7 @@
  * When an analysis arrives the answer changes by itself, and the page asks
  * for the new one; the engine stops a search nobody watches any more.
  */
+import type { BookLabels } from '@/analysis/quality';
 import { type Analysis, forSide, isFinal, SKETCH_DEPTH, sketched } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
@@ -24,8 +25,8 @@ const LEAST_DROP = 0.05;
 export interface OrderInput {
   /** The game's moves as judged so far (`reviewMoves`). */
   readonly moves: readonly ReviewMove[];
-  /** Whether the guide recommends each move (`bookMoves`). */
-  readonly book: readonly boolean[];
+  /** Each book move's label (`bookMoves`). */
+  readonly book: BookLabels;
   /** Whatever Stockfish's analysis of each position has reached in the store, final or not. */
   readonly analyses: readonly (Analysis | undefined)[];
   readonly learner: Color;

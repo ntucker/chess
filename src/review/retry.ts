@@ -6,12 +6,18 @@
  * Pure, like the rest of the review: worked out from the page's state
  * (`screen.ts`), the moves and the final analyses in the store.
  */
-import { judgement, labelMove, type MoveQuality, type ReviewQuality } from '@/analysis/quality';
+import {
+  type BookLabel,
+  judgement,
+  labelMove,
+  type MoveQuality,
+  type ReviewQuality,
+} from '@/analysis/quality';
 import { type FinalAnalysis, type MoveChange, moveChange, scoreFor } from '@/evaluation/evaluation';
 import { type Color, parsePosition, playMove, type Ply } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { variationHref } from '@/lesson/openings';
-import { lineKeys } from '@/lesson/select';
+import { bookLabel, lineKeys } from '@/lesson/select';
 
 import { isFine, type ReviewMove } from './review';
 import type { ReviewScreen } from './screen';
@@ -39,7 +45,7 @@ export type Try = { readonly uci: Uci; readonly san: string } & (
 export interface Answer {
   readonly uci: Uci;
   readonly san: string;
-  readonly quality: 'book' | 'best';
+  readonly quality: BookLabel | 'best';
   /** At the guide's move: what the lesson says it does, and where "Practice this line" opens it. */
   readonly guide?: GuideAnswer;
 }
@@ -47,6 +53,8 @@ export interface Answer {
 /** The guide's move where the learner left it, as the lesson holds it. */
 export interface GuideAnswer {
   readonly uci: Uci;
+  /** The guide's own move (`book`), or one an opportunity's line adds (`opportunity`). */
+  readonly quality: BookLabel;
   /** The lesson's idea note for the move, if it has one. */
   readonly note?: string;
   /** Where "Practice this line" opens the lesson: at the variation the move leads into. */
@@ -54,23 +62,40 @@ export interface GuideAnswer {
 }
 
 /**
- * The guide's book moves in the position after `line`, and the first of
- * them as the answer where the learner left the guide there.
+ * The guide's book moves in the position after `line`, each with its
+ * label, and the first of them as the answer where the learner left the
+ * guide there.
  */
 export function guideAt(lesson: Lesson, line: readonly Uci[]) {
   const position = lesson.positions[lineKeys(line).at(-1)!];
-  const book = (position?.moves ?? []).filter((move) => move.book);
+  const book = (position?.moves ?? []).flatMap((move) => {
+    const quality = bookLabel(move);
+    return quality ? [{ move, quality }] : [];
+  });
   const [first] = book;
   const answer: GuideAnswer | undefined = first && {
-    uci: first.uci,
-    note: first.notes?.[0]?.text,
+    uci: first.move.uci,
+    quality: first.quality,
+    note: first.move.notes?.[0]?.text,
     practice: variationHref(
       lesson.id,
-      lesson.positions[lineKeys([...line, first.uci]).at(-1)!]?.variation ?? position.variation,
+      lesson.positions[lineKeys([...line, first.move.uci]).at(-1)!]?.variation ??
+        position.variation,
     ),
   };
-  return { book: book.map(({ uci }) => uci), answer };
+  return { book: new Map(book.map(({ move, quality }) => [move.uci, quality])), answer };
 }
+
+/**
+ * Whose move an answer labelled `quality` is, to go before "move": the
+ * guide's, an opportunity's, or Stockfish's best, in the middle of a sentence
+ * (`within`) or at its start.
+ */
+export const ANSWER_OWNERS = {
+  book: { within: "the guide's", start: "The guide's" },
+  opportunity: { within: "an opportunity's", start: "An opportunity's" },
+  best: { within: "Stockfish's", start: "Stockfish's" },
+} as const satisfies Record<Answer['quality'], { within: string; start: string }>;
 
 /** What a moment shows: everything the panel, the board and the actions need to retry it. */
 export interface Moment {
@@ -117,8 +142,8 @@ export interface MomentOf {
   readonly learner: Color;
   /** The ply of the move where the learner left the guide (`leftGuide`). */
   readonly leftAt?: number;
-  /** The guide's book moves in the position before the move shown: a try among them passes. */
-  readonly book: readonly Uci[];
+  /** The guide's book moves in the position before the move shown, with their labels: a try among them passes. */
+  readonly book: ReadonlyMap<Uci, BookLabel>;
   /** At the move where the learner left the guide, the guide's move there. */
   readonly guide?: GuideAnswer;
   readonly screen: Pick<ReviewScreen, 'ply' | 'tries' | 'shown' | 'board'>;
@@ -160,7 +185,7 @@ export function momentAt({
     const label = labelMove({
       uci,
       mover: learner,
-      book: book.includes(uci),
+      book: book.get(uci),
       legal: legal[ply - 1],
       before,
       after,
@@ -188,7 +213,7 @@ export function momentAt({
   const answerUci = guide?.uci ?? best;
   const answer: Answer | undefined =
     retryable && before && answerUci
-      ? { uci: answerUci, san: sanOf(answerUci), quality: guide ? 'book' : 'best', guide }
+      ? { uci: answerUci, san: sanOf(answerUci), quality: guide?.quality ?? 'best', guide }
       : undefined;
   const passed = tries.filter((tried) => tried.status === 'judged' && tried.passed);
   const revealed = screen.shown.has(ply) || passed.length > 0;

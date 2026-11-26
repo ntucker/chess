@@ -1,6 +1,7 @@
 import { StatusHeadline } from '@/components/GameStatus';
 import { type Color, shownMove } from '@/game/replay';
 import { isFine, type ReviewMove } from '@/review/review';
+import { ANSWER_OWNERS } from '@/review/retry';
 import { summaryHeadline } from '@/review/summary';
 import { qualityLooks } from '@/theme/moveQuality';
 
@@ -110,7 +111,7 @@ function momentHeadline(
   // move, though a best or good try that beats the game's move also passes (`passes`, review/retry.ts).
   const goal =
     answer?.guide && isFine(move.quality)
-      ? `Find the guide's move, or one stronger than ${named}.`
+      ? `Find ${ANSWER_OWNERS[answer.quality].within} move, or one stronger than ${named}.`
       : `Find a better move than ${named}.`;
   const latest = tries.at(-1);
   if (board === 'retry') return { title: 'Your move.', detail: goal };
@@ -137,10 +138,9 @@ function momentHeadline(
     };
   }
   if (board === 'answer' && answer) {
-    const whose = answer.guide ? "The guide's move" : "Stockfish's move";
     return {
       title: `${qualityLooks[answer.quality].name}.`,
-      detail: `${whose}: ${shownMove(answer.san, ply)}.`,
+      detail: `${ANSWER_OWNERS[answer.quality].start} move: ${shownMove(answer.san, ply)}.`,
     };
   }
   if (hidden && canRetry && move.quality) {

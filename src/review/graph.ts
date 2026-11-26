@@ -3,7 +3,7 @@
  * stands, the moments it marks, how far the guide went, and which move a
  * point along it names. `ReviewGraph` draws them.
  */
-import type { ReviewQuality } from '@/analysis/quality';
+import type { BookLabels, ReviewQuality } from '@/analysis/quality';
 import { type Analysis, scoreFor } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
@@ -59,10 +59,12 @@ export function graphMarks(
  * the guide recommends none. The opponent's moves may not be the guide's
  * (a lesson for Black recommends only Black's moves), so they don't end it.
  */
-export function guideEnd(book: readonly boolean[], learner: Color): number {
+export function guideEnd(book: BookLabels, learner: Color): number {
   const learners = (ply: number) => (ply % 2 === 0) === (learner === 'white');
-  const left = book.findIndex((recommended, ply) => learners(ply) && !recommended);
-  return book.slice(0, left === -1 ? undefined : left).lastIndexOf(true) + 1;
+  const left = book.findIndex((label, ply) => learners(ply) && label === undefined);
+  return (
+    book.slice(0, left === -1 ? undefined : left).findLastIndex((label) => label !== undefined) + 1
+  );
 }
 
 /** `n` to three decimals, which keeps an outline short. Above `topArea`: a worklet's helpers have to be defined before it. */

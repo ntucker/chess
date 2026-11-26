@@ -64,6 +64,35 @@ describe('engineCheck', () => {
     expect(report.unreachable).toEqual([{ line: '1.d4 e5 2.dxe5', move: 'Nc6' }]);
   });
 
+  it("drops an opportunity's mark with the book flag it unbooks", async () => {
+    const found = (move: Lesson['positions'][string]['moves'][number]) =>
+      move.book ? { ...move, found: true } : move;
+    const marked: Lesson = {
+      ...LESSON,
+      positions: Object.fromEntries(
+        Object.entries(LESSON.positions).map(([key, position]) => [
+          key,
+          { ...position, moves: position.moves.map(found) },
+        ]),
+      ),
+    };
+    const { lesson } = await engineCheck(marked, evaluate);
+    const pick = ({ uci, book, found }: Lesson['positions'][string]['moves'][number]) => ({
+      uci,
+      book,
+      found,
+    });
+    // 1...e5, overruled, and 2...Nc6, which only it reached, lose both; 1...d5 keeps both.
+    expect(lesson.positions[keyAfter('d4')].moves.map(pick)).toEqual([
+      { uci: 'd7d5', book: true, found: true },
+      { uci: 'e7e5', book: undefined, found: undefined },
+    ]);
+    expect(pick(lesson.positions[keyAfter('d4', 'e5', 'dxe5')].moves[0])).toMatchObject({
+      book: undefined,
+      found: undefined,
+    });
+  });
+
   describe('in a gambit lesson', () => {
     it('keeps a mistake that leaves a playable position, saying what the engine thinks', async () => {
       const { lesson, report } = await engineCheck(LESSON, evaluate, { gambit: true });

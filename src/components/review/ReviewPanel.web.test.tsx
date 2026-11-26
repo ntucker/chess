@@ -85,7 +85,7 @@ function review(
     legal: LEGAL,
     learner,
     leftAt,
-    book: guide ? [guide.uci] : [],
+    book: new Map(guide ? [[guide.uci, guide.quality]] : []),
     guide,
     screen: { ...startReview(''), ...screen, ply },
     tryAnalyses,
@@ -229,6 +229,20 @@ describe('ReviewPanel', () => {
     render(review(2, [0, 1, 2, 3]), (host) => expect(counts(host)).toEqual([]));
   });
 
+  it("lists an opportunity's moves only where the game played one", () => {
+    const labels = (host: HTMLElement) =>
+      [...host.querySelectorAll('[role="table"] [role="img"]')].map((badge) =>
+        badge.getAttribute('aria-label'),
+      );
+    render(review(0, [0, 1, 2, 3]), (host) =>
+      expect(labels(host)).not.toContain('Opportunity move'),
+    );
+    const played = { white: {}, black: { opportunity: 1 } };
+    render(review(0, [0, 1, 2, 3], { tally: played }), (host) =>
+      expect(labels(host)).toContain('Opportunity move'),
+    );
+  });
+
   it('keeps Next moment disabled with no moment left to visit', () => {
     render(review(3, [0, 1, 2, 3]), (host) => {
       expect(button(host, /Next moment/)?.getAttribute('aria-disabled')).toBe('true');
@@ -261,10 +275,34 @@ describe('ReviewPanel', () => {
   });
 
   it("asks for the guide's move, or one stronger than the game's, where a fine move left the guide", () => {
-    const guide = { uci: 'c7c5', practice: { pathname: '/lesson/x', params: {} } } as const;
+    const guide = {
+      uci: 'c7c5',
+      quality: 'book',
+      practice: { pathname: '/lesson/x', params: {} },
+    } as const;
     render(review(2, [0, 1, 2, 3], {}, { leftAt: 1, guide }), (host) => {
       expect(host.textContent).toContain("Find the guide's move, or one stronger than 1…e5.");
       expect(host.textContent).toContain('Other moves hidden');
+    });
+  });
+
+  it("names an opportunity's move as the opportunity's, not the guide's", () => {
+    const guide = {
+      uci: 'c7c5',
+      quality: 'opportunity',
+      practice: { pathname: '/lesson/x', params: {} },
+    } as const;
+    render(review(2, [0, 1, 2, 3], {}, { leftAt: 1, guide }), (host) => {
+      expect(host.textContent).toContain("Find an opportunity's move, or one stronger than 1…e5.");
+      expect(host.textContent).not.toContain("the guide's");
+    });
+    const screen = { shown: new Set([2]), board: 'answer' } as const;
+    render(review(2, [0, 1, 2, 3], {}, { leftAt: 1, guide, screen }), (host) => {
+      expect(heading(host)).toBe('Opportunity move.');
+      expect(host.textContent).toContain("An opportunity's move: 1…c5.");
+      expect(host.textContent).toContain("c5 is an opportunity's move.");
+      expect(host.textContent).toContain("Show best: an opportunity's move here");
+      expect(host.textContent).not.toMatch(/the guide's move/i);
     });
   });
 

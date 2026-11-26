@@ -29,7 +29,7 @@ function view(overrides: Partial<GraphView> = {}): GraphView {
     moves: MOVES,
     // The last position not read yet.
     analyses: [...[0.55, 0.55, 0.55, 0.4].map((score) => partial(12, ['a', score])), undefined],
-    book: [true, true, false, false],
+    book: ['book', 'book', undefined, undefined],
     moments: [3],
     goto: () => {},
     ...overrides,

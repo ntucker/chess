@@ -63,7 +63,7 @@ const LINE: Uci[] = [
 ];
 const PLIES = replay(LINE);
 /** The first ten moves are the guide's. */
-const BOOK = LINE.map((_, n) => n < 10);
+const BOOK = LINE.map((_, n) => (n < 10 ? ('book' as const) : undefined));
 const LEGAL = PLIES.map(({ fen }) => legalMoveCountAt(fen));
 const GIVEN_UP = movesGivenUp(PLIES);
 
@@ -188,7 +188,7 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried, accur
     analyses,
     legal: LEGAL,
     learner: 'black',
-    book: [],
+    book: new Map(),
     screen,
     tryAnalyses: (screen.tries.get(screen.ply) ?? []).map((uci) => TRIED[uci]),
     tryFailed: [],

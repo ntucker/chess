@@ -3,6 +3,7 @@ import { Controller, DataProvider, getDefaultManagers, useController } from '@da
 import { act } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
+import type { BookLabels } from '@/analysis/quality';
 import type { Analysis } from '@/evaluation/evaluation';
 import { replay } from '@/game/replay';
 import { AnalysisManager, PositionAnalysis } from '@/resources/analysis';
@@ -43,13 +44,13 @@ const renders: MoveJudgements[] = [];
 const labels = () => renders.at(-1)?.qualities;
 const managers = () => [new AnalysisManager(), ...getDefaultManagers()];
 
-function Labels({ shown, book }: { readonly shown: number | null; readonly book?: boolean[] }) {
+function Labels({ shown, book }: { readonly shown: number | null; readonly book?: BookLabels }) {
   controllers.push(useController());
   renders.push(useMoveQualities(PLIES, shown, 'stockfish', book));
   return null;
 }
 
-const render = (shown: number | null, book?: boolean[]) =>
+const render = (shown: number | null, book?: BookLabels) =>
   act(async () => {
     root ??= createRoot();
     root.render(
@@ -124,10 +125,10 @@ describe('useMoveQualities', () => {
     expect(labels()).toEqual(['best', 'blunder', 'best']);
   });
 
-  it('labels book moves without asking the engine', async () => {
-    await render(2, [false, true, false]);
+  it('labels book moves by their book label without asking the engine', async () => {
+    await render(2, [undefined, 'book', 'opportunity']);
     expect(mockSearched).toEqual([]);
-    expect(labels()).toEqual([undefined, 'book', undefined]);
+    expect(labels()).toEqual([undefined, 'book', 'opportunity']);
   });
 
   // Stockfish's own numbers from a Semi-Slav (after 10.O-O, Noteboom), put on

@@ -68,7 +68,7 @@ describe('reviewMoves', () => {
   it('labels book moves without analyses, and forced moves best, as the game does', () => {
     const moves = reviewMoves({
       plies,
-      book: [true, false, true],
+      book: ['book', undefined, 'book'],
       legal: [20, 1, 20, 20, 20, 20, 20],
       analyses: [],
       failed: none,
@@ -139,7 +139,7 @@ describe('reviewMoves against the game', () => {
 
 describe('judgedPosition', () => {
   it('searches only positions a move off the guide leads into or out of', () => {
-    const book = [true, true, true, false, true];
+    const book = ['book', 'book', 'book', undefined, 'book'] as const;
     expect([0, 1, 2, 3, 4, 5].map((ply) => judgedPosition(book, ply, 5))).toEqual([
       false,
       false,
@@ -149,7 +149,7 @@ describe('judgedPosition', () => {
       false,
     ]);
     // The final position, after a move off the guide.
-    expect(judgedPosition([true, false], 2, 2)).toBe(true);
+    expect(judgedPosition(['book', undefined], 2, 2)).toBe(true);
   });
 });
 

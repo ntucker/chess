@@ -5,7 +5,7 @@
  * lesson's guide recommends, and the final analyses already in the store, so
  * it fills in by itself as searches finish.
  */
-import { labelMove, type ReviewQuality } from '@/analysis/quality';
+import { type BookLabel, type BookLabels, labelMove, type ReviewQuality } from '@/analysis/quality';
 import { type Analysis, type FinalAnalysis, isFinal, scoreFor } from '@/evaluation/evaluation';
 import type { Color, Ply } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
@@ -19,9 +19,9 @@ import { refine } from './refine';
  */
 export type ReviewMove = { readonly ply: number; readonly mover: Color } & (
   | {
-      /** A move the guide recommends: labelled `book`, never searched. */
+      /** A book move: labelled by its `BookLabel`, never searched. */
       readonly status: 'book';
-      readonly quality: 'book';
+      readonly quality: BookLabel;
     }
   | {
       /** The only legal move: labelled `best`, as the game labels it, and left out of accuracy. */
@@ -52,8 +52,8 @@ export type ReviewMove = { readonly ply: number; readonly mover: Color } & (
 export interface ReviewInput {
   /** Every position of the game; `plies[n]` follows the nth move. */
   readonly plies: readonly Ply[];
-  /** Whether the guide recommends each move (`bookMoves`); empty for a game with no lesson. */
-  readonly book: readonly boolean[];
+  /** Each book move's label (`bookMoves`); empty for a game with no lesson. */
+  readonly book: BookLabels;
   /** How many moves are legal in each position, `legal[n]` in `plies[n]` (`legalMoveCountAt`). */
   readonly legal: readonly number[];
   /** Stockfish's final analysis of each position, where the store has one. */
@@ -131,7 +131,7 @@ export const labelPositions = (ply: number) => (ply > 0 ? [ply, ply + 1, ply - 1
  * or out of it. A position only book moves touch is never searched, since
  * its moves are labelled `book`.
  */
-export const judgedPosition = (book: readonly boolean[], ply: number, moves: number) =>
+export const judgedPosition = (book: BookLabels, ply: number, moves: number) =>
   (ply > 0 && !book[ply - 1]) || (ply < moves && !book[ply]);
 
 /**
@@ -144,7 +144,7 @@ export function leftGuide(
   lesson: Lesson,
   line: readonly Uci[],
   learner: Color,
-  book: readonly boolean[],
+  book: BookLabels,
 ): number | undefined {
   const keys = lineKeys(line);
   const ply = line.findIndex((_, n) => {
@@ -209,11 +209,15 @@ export const LABELS_BEST_FIRST = [
   'best',
   'good',
   'book',
+  'opportunity',
   'inaccuracy',
   'miss',
   'mistake',
   'blunder',
 ] as const satisfies readonly ReviewQuality[];
+
+/** The labels the tally lists only where a move got them: most lessons have no opportunity. */
+export const LISTED_WHEN_COUNTED: ReadonlySet<ReviewQuality> = new Set(['opportunity']);
 
 /** How many moves got each label. */
 export type Tally = Readonly<Partial<Record<ReviewQuality, number>>>;
