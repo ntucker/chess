@@ -491,3 +491,13 @@ A bookmark saves a find on the device as the same lesson fragment the importer w
 marked move, the cue's replies and Act III), under its own storage key with its own versioned parser
 (Shape; unknown versions are ignored), so it plays back through E's code. `/privacy` and the Play
 listing's Data safety answers updated for the new stored value. After K and E.
+
+As built (#260, #263): the board plays the lesson with the saved finds written in; the opportunity
+list and the finder read the shipped lesson. A saved find's learner moves in Act I are book moves
+where the lesson as given has no moves (past a guide line's end, so a clean Practice run plays on to
+the cue) and ordinary moves where the guide has others (so the repertoire Practice tests stays the
+guide's). All of a lesson's saved finds are written in one `writeFinds` call, each judged against the
+lesson as given, so their order doesn't change what is booked. Reach, share and score are stored with
+the find: the answers behind them don't outlive the session, and the score needs the cue's reach.
+The index's line ends stay the shipped lesson's, so the marks of the rows before a lesson is picked
+(`openingMarks`) can disagree with the lesson's own.
