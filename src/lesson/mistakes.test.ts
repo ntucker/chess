@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { Lesson, LessonMove, LessonPosition } from './lesson';
 import { keyAfter, SAMPLE, uci, uciLine } from './lesson.fixture';
-import { mistakeLine } from './mistakes';
+import { markedMoves, mistakeLine } from './mistakes';
 
 const at = (moves: LessonMove[]): LessonPosition => ({ variation: 'caro-kann', moves });
 const BA6 = { uci: uci('e4', 'e5', 'Ba6'), mistake: { verdict: 'losesMaterial' as const } };
@@ -66,5 +66,15 @@ describe('mistakeLine', () => {
     expect(mistakeLine(shuffle, keyAfter('e4', 'e5'), nf3)).toEqual(
       uciLine('e4', 'e5', 'Nf3', 'Nf6', 'Ng1', 'Ng8').slice(2),
     );
+  });
+});
+
+describe('markedMoves', () => {
+  it("lists either side's marked moves with the position each is played in, in the file's order", () => {
+    const slip = { uci: uci('e4', 'e5', 'Ba6', 'Qg5'), mistake: { cost: 0.3 } };
+    expect(markedMoves(lesson([NXA6, slip]))).toEqual([
+      { key: keyAfter('e4', 'e5'), move: BA6 },
+      { key: keyAfter('e4', 'e5', 'Ba6'), move: slip },
+    ]);
   });
 });

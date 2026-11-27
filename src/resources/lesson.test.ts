@@ -6,6 +6,7 @@ import { NAMED_MOVE, parsePosition, positionKey } from '@/game/replay';
 import { checkLesson } from '@/lesson/check';
 import type { Lesson } from '@/lesson/lesson';
 import { readShippedLesson, shippedIds } from '@/lesson/lesson.fixture';
+import { markedMoves, markId } from '@/lesson/mistakes';
 import { lessonIndex, meets } from '@/lesson/openings';
 
 import { LESSON_INDEX, type LessonId, LESSONS } from './lesson';
@@ -42,6 +43,15 @@ describe('shipped lessons', () => {
     const lesson = readShippedLesson(id);
     expect(lesson.id).toBe(id);
     expect(checkLesson(lesson)).toEqual([]);
+  });
+
+  it.each(shippedIds)('%s measures every trap: its cost and its gain in each band', (id) => {
+    // The importer's opportunities step measures every mark, a study's trap or a find (piece D3).
+    const lesson = readShippedLesson(id);
+    const unmeasured = markedMoves(lesson)
+      .filter(({ move: { mistake } }) => mistake.cost === undefined || !mistake.gain)
+      .map(({ key, move }) => markId(key, move.uci));
+    expect(unmeasured).toEqual([]);
   });
 
   it.each(shippedIds)("%s names no variation after a guide's contents page", (id) => {

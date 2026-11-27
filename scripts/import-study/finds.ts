@@ -1,29 +1,31 @@
 /**
- * The importer's opportunities step (piece D1 of docs/plans/opportunities.md):
- * runs the finder (src/opportunity) over a lesson for the learner's side and
- * writes each kept find on the guide into the tree (`writeFinds` in
- * src/lesson/finds.ts), its mark with its gain in every rating band.
- * `addPathCounts` then writes
- * the explorer's counts and totals on every position of the line each find's
- * mark plays.
+ * The importer's opportunities step (pieces D1 and D3 of
+ * docs/plans/opportunities.md): on a lesson whose recipe sets
+ * `opportunities`, runs the finder (src/opportunity) for the learner's side
+ * and writes each kept find on the guide into the tree (`writeFinds` in
+ * src/lesson/finds.ts), its mark with its gain in every rating band. On every
+ * lesson it measures each mark the finds didn't (`measureMarks`: the traps
+ * migrated from the studies, either side's), and `addPathCounts` then writes
+ * the explorer's counts and totals where each mark is judged.
  *
  * The finds come from one band's run (`FIND_BAND`, the report's), so a mistake
  * common only in another band is not written; each find's gain is still
  * measured in every band, from that band's replies at the cue.
  */
+import { moveLoss } from '@/analysis/quality';
 import { isFinal } from '@/evaluation/evaluation';
-import { playLine, positionKey } from '@/game/replay';
+import { parsePositionKey, playLine, positionKey } from '@/game/replay';
 import { offGuide } from '@/lesson/check';
-import { writeFinds } from '@/lesson/finds';
-import type { Lesson, PositionKey } from '@/lesson/lesson';
-import { keepMistakeLines, mistakeLine } from '@/lesson/mistakes';
+import { type MarkMeasure, writeFinds } from '@/lesson/finds';
+import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
+import { keepMistakeLines, markedMoves, markId, mistakeLine } from '@/lesson/mistakes';
 import { guideMove } from '@/lesson/select';
 import { cueGain, type Find } from '@/opportunity/finder';
 import { LIMITS } from '@/opportunity/limits';
-import { type Context, walkTo } from '@/opportunity/walk';
+import { type Context, type Node, walkTo } from '@/opportunity/walk';
 import { RATING_BANDS } from '@/lichess/explorer';
 
-import { startOf } from './engineCheck';
+import { linesTo, startOf } from './engineCheck';
 import {
   explorerReplies,
   FIND_BAND,
@@ -53,29 +55,74 @@ export async function lessonFinds(counted: Lesson, explorer: Explorer): Promise<
   try {
     const { finds } = await runFinder(host, lessonStart(counted));
     const written: LessonFind[] = [];
-    for (const find of finds)
-      written.push({ find, gain: await gainByBand(host, counted, find, explorer) });
+    for (const find of finds) {
+      const cue = walkTo(counted.start, [...find.line, find.mistake])!;
+      written.push({ find, gain: await gainByBand(host, cue, explorer) });
+    }
     return written;
   } finally {
     host.stop();
   }
 }
 
-/** `find`'s gain in each of `RATING_BANDS`, from that band's replies at its cue. */
-async function gainByBand(
-  host: FinderHost,
-  lesson: Lesson,
-  find: Find,
-  explorer: Explorer,
-): Promise<number[]> {
-  const cue = walkTo(lesson.start, [...find.line, find.mistake])!;
+/**
+ * Each of `lesson`'s marks without a cost (a trap migrated from a study),
+ * measured as the finder measures a find: its cost from full searches of the
+ * positions before and after it, and its gain in each of `RATING_BANDS` from
+ * that band's replies at the cue (`explorer`, with totals) for the side that
+ * punishes it. Either side's marks, so a trap the learner falls into holds the
+ * opponent's numbers. Each is reached by the guide's first line to it
+ * (`linesTo`).
+ */
+export async function measureMarks(lesson: Lesson, explorer: Explorer): Promise<MarkMeasure[]> {
+  const unmeasured = markedMoves(lesson).filter(({ move }) => move.mistake.cost === undefined);
+  if (!unmeasured.length) return [];
+  const lines = linesTo(lesson);
+  const host = await finderHost(lesson, FIND_BAND);
+  try {
+    const measures: MarkMeasure[] = [];
+    for (const { key, move } of unmeasured) {
+      const before = walkTo(lesson.start, lines.get(key)!.line)!;
+      const cue = walkTo(lesson.start, [...before.line, move.uci])!;
+      const cost = await markCost(host, before, cue, move.uci);
+      measures.push({ key, uci: move.uci, cost, gain: await gainByBand(host, cue, explorer) });
+    }
+    return measures;
+  } finally {
+    host.stop();
+  }
+}
+
+/** What `uci`, the move from `before` to `cue`, gives away for its mover, by full searches of both. */
+function markCost(host: FinderHost, before: Node, cue: Node, uci: Uci): Promise<number> {
+  return settle(host, (ask) => {
+    const fullAnalysis = (spot: Node) => {
+      const analysis = host.answers.analysis(spot);
+      if (!isFinal(analysis)) ask({ kind: 'full', spot });
+      return analysis;
+    };
+    const [above, below] = [fullAnalysis(before), fullAnalysis(cue)];
+    if (!isFinal(above) || !isFinal(below)) return undefined;
+    const loss = moveLoss(above, below, uci, before.pos.turn)?.loss;
+    if (loss === undefined)
+      throw new Error(`Stockfish can't judge the mark ${uci} at ${before.key}`);
+    // Two searches, so a trap Stockfish rates best can read a hair under 0; it gives away nothing.
+    return Math.max(0, loss);
+  });
+}
+
+/**
+ * What knowing the punishment at `cue` is worth in each of `RATING_BANDS`,
+ * from that band's replies there, for the side to move at `cue`.
+ */
+async function gainByBand(host: FinderHost, cue: Node, explorer: Explorer): Promise<number[]> {
   const gains: number[] = [];
   for (const band of RATING_BANDS) {
     const replies = explorerReplies(cue.key, await explorer(cue.key, band, { total: true }));
     gains.push(
       await settle(host, (ask) => {
         const context: Context = {
-          side: lesson.side,
+          side: cue.pos.turn,
           answers: host.answers,
           limits: LIMITS,
           ask: (kind, { line, key }) => ask({ kind, spot: { line, key } }),
@@ -88,6 +135,10 @@ async function gainByBand(
   }
   return gains;
 }
+
+/** A find's mark (`markId`): the position its mistake is played in, and the mistake. */
+const findMark = (lesson: Lesson, find: Find) =>
+  markId(walkTo(lesson.start, find.line)!.key, find.mistake);
 
 /**
  * The positions `find`'s mark plays a move in, in `lesson` (which `withFinds`
@@ -129,19 +180,34 @@ export function withFinds(lesson: Lesson, finds: readonly LessonFind[]): Lesson 
 }
 
 /**
- * `lesson` (with `finds` written in) with the lichess counts on every position
- * of each find's marked path (`markedPositions`): each move's games and the
- * games reaching the position, per band, from one explorer answer each (asked
- * with its total). The counts can change the guide's choices, so each mark
- * keeps the line it had (`keepMistakeLines`): the line counted is the line
- * played. Popularity, which runs after, keeps the counts where it doesn't ask.
+ * `lesson` (with `finds` written in) with the lichess counts on the positions
+ * each mark is judged by: each move's games and the games reaching the
+ * position, per band, from one explorer answer each (asked with its total).
+ * A find's mark is counted on every position of the line it plays
+ * (`markedPositions`). Any other mark (a trap migrated from a study) is
+ * counted on its own position and its cue, where its share and its gains are
+ * read, since its whole path would take the explorer hours more on the
+ * biggest lessons. A cue the tree has no position for has nowhere to keep
+ * counts, so it isn't asked here (`measureMarks` still reads its replies
+ * for the gains).
+ *
+ * The counts can change the guide's choices, so each mark keeps the line it
+ * had (`keepMistakeLines`): the line counted is the line played. Popularity,
+ * which runs after, keeps the counts where it doesn't ask.
  */
 export async function addPathCounts(
   lesson: Lesson,
   finds: readonly LessonFind[],
   explorer: Explorer,
 ): Promise<Lesson> {
-  const keys = new Set(finds.flatMap(({ find }) => markedPositions(lesson, find)));
+  const found = new Set(finds.map(({ find }) => findMark(lesson, find)));
+  const keys = new Set([
+    ...finds.flatMap(({ find }) => markedPositions(lesson, find)),
+    ...markedMoves(lesson)
+      .filter(({ key, move }) => !found.has(markId(key, move.uci)))
+      .flatMap(({ key, move }) => [key, positionKey(played(parsePositionKey(key)!, move.uci))])
+      .filter((key) => lesson.positions[key]),
+  ]);
   return recountKeepingLines(lesson, keys, explorer);
 }
 

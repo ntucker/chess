@@ -26,7 +26,7 @@ import type {
   Uci,
   VariationId,
 } from '@/lesson/lesson';
-import { markId, mistakeLine, withLinesOf } from '@/lesson/mistakes';
+import { markedMoves, markId, mistakeLine, withLinesOf } from '@/lesson/mistakes';
 import { sameLine } from '@/lesson/openings';
 import { guideMove } from '@/lesson/select';
 
@@ -218,11 +218,7 @@ export async function buildKeepingMarks<
 
 /** The marks in `lesson`, by `markId`. */
 export function markIds(lesson: Lesson): Set<string> {
-  return new Set(
-    Object.entries(lesson.positions).flatMap(([key, { moves }]) =>
-      moves.filter((move) => move.mistake).map((move) => markId(key, move.uci)),
-    ),
-  );
+  return new Set(markedMoves(lesson).map(({ key, move }) => markId(key, move.uci)));
 }
 
 /**

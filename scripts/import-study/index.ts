@@ -10,15 +10,16 @@
  * contradicts (./engineCheck) → settle each mistake's line (`settleMistakes`) → give notes written on another move order to
  * the position the lesson reaches (./transpositions) → on a recipe that sets
  * `opportunities`, write the opportunity finder's finds into the tree
- * (./finds) → write the idea of each book move nothing explains with AI
+ * (./finds) → measure every other mark's cost and gains (./finds) → write
+ * the idea of each book move nothing explains with AI
  * (./explain) → drop variation names no position carries (./emptyVariations)
- * → count the line each find's mark plays (./finds) → add popularity →
+ * → count where each mark is judged (./finds) → add popularity →
  * checkLesson → write
  * assets/lessons/<id>.json, register it in src/resources/lesson.ts and list
  * it in assets/lessons/index.json.
  * `caro-kann` names a study listed in studies.ts. With --no-popularity the
  * file is written without counts, replacing any it had, and without finds
- * (their gains are per rating band).
+ * or any mark's cost and gains (gains are per rating band).
  *
  * The AI step runs the Claude Code CLI (`claude`, signed in, or
  * CLAUDE_CODE_OAUTH_TOKEN set) and keeps each answer in
@@ -58,7 +59,9 @@ import { join } from 'node:path';
 import { INITIAL_FEN } from 'chessops/fen';
 import type { Color } from 'chessops/types';
 
+import { MISTAKE_LOSS } from '@/analysis/quality';
 import { checkLesson } from '@/lesson/check';
+import { withMeasures } from '@/lesson/finds';
 import type { Lesson } from '@/lesson/lesson';
 import { keepMistakeLines } from '@/lesson/mistakes';
 import { lessonIndex } from '@/lesson/openings';
@@ -78,7 +81,14 @@ import {
   settleMistakes,
   type StudyLesson,
 } from './mistakes';
-import { addPathCounts, type LessonFind, lessonFinds, recountCounted, withFinds } from './finds';
+import {
+  addPathCounts,
+  type LessonFind,
+  lessonFinds,
+  measureMarks,
+  recountCounted,
+  withFinds,
+} from './finds';
 import { addPopularity, lichessExplorer, type LichessExplorer } from './popularity';
 import { indexedWith, readLessonFile, registered, writeIndex } from './register';
 import { report, sourceReport } from './report';
@@ -222,6 +232,13 @@ async function main() {
     console.log(
       `opportunities: ${finds.length} finds written: ${finds.map(({ find }) => sans(lesson, [...find.line, find.mistake])).join('; ') || 'none'}`,
     );
+  }
+  // The traps the studies drew, measured as finds are (gains are per rating band too).
+  if (counting) {
+    const measures = await measureMarks(lesson, explorer.ask);
+    lesson = withMeasures(lesson, measures);
+    const cheap = measures.filter(({ cost }) => cost < MISTAKE_LOSS).length;
+    console.log(`marks measured: ${measures.length}, ${cheap} cheaper than a mistake`);
   }
   const explainer = explainCli({
     learner: info.side,

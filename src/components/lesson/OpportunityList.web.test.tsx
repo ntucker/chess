@@ -5,7 +5,7 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import type { Uci } from '@/lesson/lesson';
+import type { Lesson, Uci } from '@/lesson/lesson';
 import { readShippedLesson, uciLine } from '@/lesson/lesson.fixture';
 import { lessonOpportunities } from '@/lesson/opportunities';
 import type { Find } from '@/opportunity/finder';
@@ -81,6 +81,22 @@ const MATE: Find = {
 /** The list with one find from elsewhere, `FIND` costing `cost`, as its last row. */
 const foundAt = (cost: number): Partial<Props> => ({
   finder: { ...DONE, from: 'elsewhere', run: { finds: [{ ...FIND, cost }], running: false } },
+});
+
+/** `lesson` with no cost on any marked mistake, as a trap is before the importer measures it. */
+const unjudged = (lesson: Lesson): Lesson => ({
+  ...lesson,
+  positions: Object.fromEntries(
+    Object.entries(lesson.positions).map(([key, entry]) => [
+      key,
+      {
+        ...entry,
+        moves: entry.moves.map(({ mistake, ...move }) =>
+          mistake ? { ...move, mistake: { ...mistake, cost: undefined } } : move,
+        ),
+      },
+    ]),
+  ),
 });
 
 /** The finder's button, named by its tooltip. */
@@ -184,8 +200,7 @@ describe('OpportunityList', () => {
       render(props, (host) => rowsIn(host).at(-1)!.textContent);
     expect(payoff(foundAt(0.17))).toMatch(/\u221217%$/);
     expect(payoff(foundAt(0.001))).toMatch(/0%$/);
-    // The London's marked mistakes came from its guide, with no cost measured yet.
-    expect(payoff({ lesson: readShippedLesson('london') })).toMatch(/\u2013$/);
+    expect(payoff({ lesson: unjudged(readShippedLesson('london')) })).toMatch(/\u2013$/);
   });
 
   it("plays a row's line when it is pressed", () => {

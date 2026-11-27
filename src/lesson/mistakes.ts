@@ -116,6 +116,20 @@ export const isGuideLine = (lesson: Lesson, key: PositionKey, line: readonly Uci
 /** A mark's id: the position its move is played in, and the move. */
 export const markId = (key: PositionKey, uci: Uci) => `${key} ${uci}`;
 
+/** A marked mistake in the tree: the position it is played in, and the move. */
+export interface MarkedMove {
+  readonly key: PositionKey;
+  readonly move: LessonMove & { readonly mistake: Mistake };
+}
+
+/** Every marked move of `lesson`, either side's, in the file's order. */
+export const markedMoves = (lesson: Lesson): MarkedMove[] =>
+  Object.entries(lesson.positions).flatMap(([key, { moves }]) =>
+    moves.filter(isMarked).map((move) => ({ key, move })),
+  );
+
+const isMarked = (move: LessonMove): move is MarkedMove['move'] => move.mistake !== undefined;
+
 /** The trap a note's reference names: `uci`, the guide's move at `key`, and its line. */
 function trapAt(lesson: Lesson, key: PositionKey, uci: Uci): Trap {
   let byKey = traps.get(lesson);
