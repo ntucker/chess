@@ -129,10 +129,14 @@
   }
   /*
    * The panel scrolls on its own. It fades out its bottom edge to show
-   * there's more below; the padding lets the last line clear it.
+   * there's more below; the padding lets the last line clear it. It
+   * doesn't scroll sideways, or a phone browser takes a sideways swipe to
+   * scroll it and the pager under it (its rows widen into the margin) never
+   * pages.
    */
   :root [data-narrow='program'],
   :root [data-narrow='footed-program'] {
+    overflow-x: hidden;
     overflow-y: auto;
     padding-bottom: var(--fade);
     /* A mask reads only alpha, so black here is opaque, not a theme color. */
