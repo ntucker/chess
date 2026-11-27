@@ -163,15 +163,15 @@ describe('OpportunityList', () => {
     expect(said).toHaveLength(ranked.length);
     const bg5 = said.find((label) => label?.includes('6.Bg5'));
     expect(bg5).toMatch(
-      /^6\.Bg5, after 5\.d3 Bc5, reached in 3\.9% of games, played 15% of the time, knowing it adds 13%, punished with mate$/,
+      /^6\.Bg5, after 5\.d3 Bc5, arrives in 3\.9% of games, falls for it 15% of the time, knowing it gains 13%, punished with mate$/,
     );
   });
 
   it("names each meter's column in its tooltip, over rows only", () => {
     const columns = [
-      'Reached: how often',
-      'Played: how often',
-      'Worth knowing: the winning chances you add',
+      'Arrive: how often',
+      'Fall for it: once your game arrives',
+      'Gain: each time the opponent falls for it',
     ];
     const shown = text({});
     for (const column of columns) expect(shown).toContain(column);
@@ -196,10 +196,10 @@ describe('OpportunityList', () => {
     const worth = (props: Partial<Props>) =>
       render(props, (host) => rowsIn(host).at(-1)!.textContent);
     expect(worth(foundAt(0.17))).toMatch(/\+17%$/);
-    expect(render(foundAt(0.17), labelsIn).at(-1)).toContain('knowing it adds 17%');
+    expect(render(foundAt(0.17), labelsIn).at(-1)).toContain('knowing it gains 17%');
     // Under 10%, a tenth, as reach and share show it, so the three multiply as they rank.
     expect(worth(foundAt(0.053))).toMatch(/\+5\.3%$/);
-    expect(render(foundAt(0.053), labelsIn).at(-1)).toContain('knowing it adds 5.3%');
+    expect(render(foundAt(0.053), labelsIn).at(-1)).toContain('knowing it gains 5.3%');
     // A punishment that mates is marked beside its move.
     const titles = render({}, (host) => rowsIn(host).map((row) => row.textContent ?? ''));
     expect(titles[0]).toMatch(/^6\.Bc4 #/);
@@ -230,7 +230,7 @@ describe('OpportunityList', () => {
     });
     expect(said).toHaveLength(ranked.length + 2);
     expect(said.at(-2)).toMatch(
-      /^7\.\.\.Bg4, after 6\.\.\.Qd4 7\.O-O, reached in 12% of games, played 10% of the time, knowing it adds 12%$/,
+      /^7\.\.\.Bg4, after 6\.\.\.Qd4 7\.O-O, arrives in 12% of games, falls for it 10% of the time, knowing it gains 12%$/,
     );
     expect(said.at(-1)).toMatch(/^3\.\.\.Nf6, after 2\.\.\.Nc6 3\.Qh5, .*, punished with mate$/);
     expect(onPlay).toHaveBeenCalledWith([...FIND.line, FIND.mistake]);
@@ -254,7 +254,7 @@ describe('OpportunityList', () => {
     expect(labels({ ...past, saved })).toHaveLength(ahead);
     // Off the guide, nothing is left to list: no rows, so no column heads.
     const offGuide = text({ line: uciLine('d4'), finder, saved });
-    expect(offGuide).not.toContain('Reached: how often');
+    expect(offGuide).not.toContain('Arrive: how often');
   });
 
   it('leaves out a find that reaches a listed position by another order of moves', () => {

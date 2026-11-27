@@ -364,9 +364,9 @@ function sourceChip(source: ReplySource) {
 const listTip = (players: string | undefined) =>
   `The opponent's mistakes the guide marks that the board can still reach${
     players ? `, against ${players}` : ''
-  }, best first by the three columns multiplied: reached \u00d7 played \u00d7 worth knowing. Those not measured yet come last, by how often your games reach them. Tap one to play up to your cue.`;
+  }, best first by the three columns multiplied: arrive \u00d7 fall for it \u00d7 gain, the extra points knowing it wins you per game. Those not measured yet come last, by how often your games arrive. Tap one to play up to your cue.`;
 
-/** After a row's mistake, where its punishment mates (the worth column's tip says so). */
+/** After a row's mistake, where its punishment mates (the gain column's tip says so). */
 const MATE_MARK = '#';
 
 /** The rows' three meters, left to right: each column's icon, and what it shows in its tooltip. */
@@ -374,17 +374,17 @@ const COLUMNS = [
   {
     meter: 'reach',
     icon: 'footsteps-outline',
-    tip: "Reached: how often your games get from the board's position to the one the mistake is played in. \u2013 means no games counted.",
+    tip: "Arrive: how often your games get from the board's position to the one where the opponent can make the mistake. \u2013 means no games counted.",
   },
   {
     meter: 'share',
-    icon: 'people-outline',
-    tip: 'Played: how often the opponent makes the mistake there. \u2013 means no count for this move.',
+    icon: 'fish-outline',
+    tip: 'Fall for it: once your game arrives, how often the opponent plays the mistake. \u2013 means no count for this move.',
   },
   {
-    meter: 'worth',
+    meter: 'gain',
     icon: 'trophy-outline',
-    tip: `Worth knowing: the winning chances you add, each time the mistake is played, by knowing the punishment rather than playing what most players at your level play. \u2013 means it isn't measured yet; ${MATE_MARK} beside a move, the punishment mates.`,
+    tip: `Gain: each time the opponent falls for it, the extra winning chances (points out of 100) you get by knowing the punishment, rather than playing what most players at your level play. \u2013 means it isn't measured yet; ${MATE_MARK} beside a move, the punishment mates.`,
   },
 ] as const;
 type Meter = (typeof COLUMNS)[number]['meter'];
@@ -420,7 +420,7 @@ const NONE: readonly Opportunity[] = [];
 /** No moves played: the line to the lesson's start. */
 const NO_MOVES: readonly Uci[] = [];
 
-/** The worth meter's full width: knowing the punishment adds this much expected score. */
+/** The gain meter's full width: knowing the punishment adds this much expected score. */
 const FULL_GAIN = 0.3;
 
 /** What a row shows, from the lesson's opportunity (`lessonRow`) or a find (`findRow`). */
@@ -508,7 +508,7 @@ function Row({
     reach: { label: reach === undefined ? '–' : finePercent(reach), fill: reach ?? 0 },
     share: { label: share === undefined ? '–' : finePercent(share), fill: share ?? 0 },
     // Always the learner's gain, so a plus: never read as what they lose.
-    worth: {
+    gain: {
       label: gain === undefined ? '–' : `+${finePercent(gain)}`,
       fill: Math.min((gain ?? 0) / FULL_GAIN, 1),
     },
@@ -520,9 +520,9 @@ function Row({
         accessibilityLabel={[
           name ?? mistake,
           caption,
-          reach !== undefined && `reached in ${finePercent(reach)} of games`,
-          share !== undefined && `played ${finePercent(share)} of the time`,
-          gain !== undefined && `knowing it adds ${finePercent(gain)}`,
+          reach !== undefined && `arrives in ${finePercent(reach)} of games`,
+          share !== undefined && `falls for it ${finePercent(share)} of the time`,
+          gain !== undefined && `knowing it gains ${finePercent(gain)}`,
           mates && 'punished with mate',
           mark && SPOKEN_MARKS[mark],
         ]
