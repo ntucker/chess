@@ -28,20 +28,31 @@ const OFF_GUIDE: SavedFind = {
   source: { from: 'maia', rating: 1500 },
   reach: 0.4,
   share: 0.05,
-  score: 0.01,
+  gain: 0.5,
 };
 
 /** The same cue, measured from lichess's 1400 band. */
 const COUNTED: SavedFind = {
   ...OFF_GUIDE,
   source: { from: 'lichess', band: 1400 },
-  score: 0.02,
+  gain: 1,
 };
 
 describe('parseSavedFinds', () => {
   it('reads back what savedFindsText writes', () => {
     const saved = { stafford: [OFF_GUIDE] };
     expect(parseSavedFinds(savedFindsText(saved))).toEqual(saved);
+  });
+
+  it('reads a find saved before finds kept their gain, its gain from the score it kept', () => {
+    const { gain: _gain, ...older } = { ...OFF_GUIDE, score: 0.02 };
+    const text = (find: object) => JSON.stringify({ version: 1, lessons: { stafford: [find] } });
+    const [read] = parseSavedFinds(text(older)).stafford!;
+    expect(read.gain).toBeCloseTo(0.02 / (0.4 * 0.05));
+    // At most all the winning chances.
+    expect(parseSavedFinds(text({ ...older, score: 0.5 })).stafford![0].gain).toBe(1);
+    // Not where reach × share leaves nothing to divide by.
+    expect(parseSavedFinds(text({ ...older, share: 0 }))).toEqual({});
   });
 
   it('reads another version, or damaged text, as none', () => {
@@ -54,14 +65,23 @@ describe('parseSavedFinds', () => {
   });
 
   it("drops a find missing a field, or whose moves don't play, and keeps the rest", () => {
-    const { score: _score, ...unscored } = OFF_GUIDE;
+    const { gain: _gain, ...unscored } = OFF_GUIDE;
     const illegal = { ...OFF_GUIDE, mistake: 'e1e8' };
     const unknownRating = { ...OFF_GUIDE, source: { from: 'maia', rating: 1550 } };
     const text = JSON.stringify({
       version: 1,
-      lessons: { stafford: [unscored, illegal, unknownRating, OFF_GUIDE], slav: [illegal] },
+      lessons: {
+        stafford: [unscored, illegal, unknownRating, OFF_GUIDE],
+        slav: [illegal],
+      },
     });
     expect(parseSavedFinds(text)).toEqual({ stafford: [OFF_GUIDE] });
+  });
+
+  it('drops a find whose reach or share is not above 0', () => {
+    const text = (find: object) => JSON.stringify({ version: 1, lessons: { stafford: [find] } });
+    expect(parseSavedFinds(text({ ...OFF_GUIDE, share: 0 }))).toEqual({});
+    expect(parseSavedFinds(text({ ...OFF_GUIDE, reach: -0.4, share: -0.05 }))).toEqual({});
   });
 });
 
@@ -84,7 +104,7 @@ describe('bySource', () => {
       replies: ['d6e5'],
       payoff: [],
     };
-    const better = { ...other, score: 0.5 };
+    const better = { ...other, gain: 0.9 };
     expect(bySource([OFF_GUIDE, COUNTED, better])).toEqual([
       { source: COUNTED.source, finds: [COUNTED] },
       { source: OFF_GUIDE.source, finds: [better, OFF_GUIDE] },
@@ -111,13 +131,13 @@ describe('withSavedFinds', () => {
     const reply = lesson.positions[cueOf(OFF_GUIDE)].moves.find(({ uci }) => uci === NXF7[7]);
     expect(reply?.book).toBe(true);
     // The list of the lesson's own opportunities reads the shipped lesson, never the saved finds.
-    expect(lessonOpportunities(STAFFORD, 2).some(({ next }) => next === cueOf(OFF_GUIDE))).toBe(
+    expect(lessonOpportunities(STAFFORD, 2, []).some(({ next }) => next === cueOf(OFF_GUIDE))).toBe(
       false,
     );
   });
 
   it("leaves a mistake the lesson already marks to the lesson's own mark", () => {
-    const [first] = lessonOpportunities(STAFFORD, 2);
+    const [first] = lessonOpportunities(STAFFORD, 2, []);
     const marked = { ...OFF_GUIDE, line: first.line.slice(0, -1), mistake: first.move.uci };
     expect(withSavedFinds(STAFFORD, [marked])).toBe(STAFFORD);
   });

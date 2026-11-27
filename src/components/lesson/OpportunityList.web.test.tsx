@@ -23,6 +23,8 @@ jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 const STAFFORD = readShippedLesson('stafford');
 /** The 1400 band, which the finder's limits were tuned at. */
 const BAND = 2;
+/** The board at the lesson's start: every row ahead. */
+const START: readonly Uci[] = [];
 
 type Props = Parameters<typeof OpportunityList>[0];
 
@@ -78,13 +80,13 @@ const MATE: Find = {
   payoff: [],
 };
 
-/** The list with one find from elsewhere, `FIND` costing `cost`, as its last row. */
-const foundAt = (cost: number): Partial<Props> => ({
-  finder: { ...DONE, from: 'elsewhere', run: { finds: [{ ...FIND, cost }], running: false } },
+/** The list with one find from elsewhere, `FIND` with its gain at `gain`, as its last row. */
+const foundAt = (gain: number): Partial<Props> => ({
+  finder: { ...DONE, from: 'elsewhere', run: { finds: [{ ...FIND, gain }], running: false } },
 });
 
-/** `lesson` with no cost on any marked mistake, as a trap is before the importer measures it. */
-const unjudged = (lesson: Lesson): Lesson => ({
+/** `lesson` with no gain on any marked mistake, as a trap is before the importer measures it. */
+const unmeasured = (lesson: Lesson): Lesson => ({
   ...lesson,
   positions: Object.fromEntries(
     Object.entries(lesson.positions).map(([key, entry]) => [
@@ -92,7 +94,7 @@ const unjudged = (lesson: Lesson): Lesson => ({
       {
         ...entry,
         moves: entry.moves.map(({ mistake, ...move }) =>
-          mistake ? { ...move, mistake: { ...mistake, cost: undefined } } : move,
+          mistake ? { ...move, mistake: { ...mistake, gain: undefined } } : move,
         ),
       },
     ]),
@@ -117,6 +119,7 @@ function render<T>(props: Partial<Props>, read: (host: HTMLElement) => T): T {
           <OpportunityList
             lesson={STAFFORD}
             band={BAND}
+            line={START}
             progress={UNTOUCHED}
             players="Lichess players rated 1400–1599"
             onPlay={() => {}}
@@ -153,22 +156,22 @@ const labels = (props: Partial<Props> = {}) => render(props, labelsIn);
 const text = (props: Partial<Props>) => render(props, (host) => host.textContent ?? '');
 
 describe('OpportunityList', () => {
-  const ranked = lessonOpportunities(STAFFORD, BAND);
+  const ranked = lessonOpportunities(STAFFORD, BAND, []);
 
   it('lists the ranked opportunities, each saying the moves before it and its meters aloud', () => {
     const said = labels();
     expect(said).toHaveLength(ranked.length);
     const bg5 = said.find((label) => label?.includes('6.Bg5'));
     expect(bg5).toMatch(
-      /^6\.Bg5, after 5\.d3 Bc5, reached in \d+% of games, played 15% of the time, punished with mate$/,
+      /^6\.Bg5, after 5\.d3 Bc5, set up in 3\.9% of games, trapped 15% of the time, knowing it gains 13%, punished with mate$/,
     );
   });
 
   it("names each meter's column in its tooltip, over rows only", () => {
     const columns = [
-      'Reached: how often',
-      'Played: how often',
-      'Payoff: the winning chances the mistake gives away',
+      'Set up: how often',
+      'Trapped: once the trap is set up',
+      'Gain: each time the opponent is trapped',
     ];
     const shown = text({});
     for (const column of columns) expect(shown).toContain(column);
@@ -189,18 +192,19 @@ describe('OpportunityList', () => {
     expect(text({ lesson: antiLondon, finder: found })).toContain(columns[0]);
   });
 
-  it('says the payoff a row gives away, as its cell shows it', () => {
-    const said = (cost: number) => render(foundAt(cost), labelsIn).at(-1);
-    expect(said(0.17)).toContain('gives away 17%');
-    expect(said(0.001)).toContain('gives away 0%');
-  });
-
-  it("shows a dash for the payoff only where the mistake isn't judged", () => {
-    const payoff = (props: Partial<Props>) =>
+  it('shows and says what knowing a row gains, a dash where not measured', () => {
+    const worth = (props: Partial<Props>) =>
       render(props, (host) => rowsIn(host).at(-1)!.textContent);
-    expect(payoff(foundAt(0.17))).toMatch(/\u221217%$/);
-    expect(payoff(foundAt(0.001))).toMatch(/0%$/);
-    expect(payoff({ lesson: unjudged(readShippedLesson('london')) })).toMatch(/\u2013$/);
+    expect(worth(foundAt(0.17))).toMatch(/\+17%$/);
+    expect(render(foundAt(0.17), labelsIn).at(-1)).toContain('knowing it gains 17%');
+    // Under 10%, a tenth, as reach and share show it, so the three multiply as they rank.
+    expect(worth(foundAt(0.053))).toMatch(/\+5\.3%$/);
+    expect(render(foundAt(0.053), labelsIn).at(-1)).toContain('knowing it gains 5.3%');
+    // A punishment that mates is marked beside its move.
+    const titles = render({}, (host) => rowsIn(host).map((row) => row.textContent ?? ''));
+    expect(titles[0]).toMatch(/^6\.Bc4 #/);
+    expect(titles[2]).not.toContain('#');
+    expect(worth({ lesson: unmeasured(readShippedLesson('london')) })).toMatch(/\u2013$/);
   });
 
   it("plays a row's line when it is pressed", () => {
@@ -226,7 +230,7 @@ describe('OpportunityList', () => {
     });
     expect(said).toHaveLength(ranked.length + 2);
     expect(said.at(-2)).toMatch(
-      /^7\.\.\.Bg4, after 6\.\.\.Qd4 7\.O-O, reached in 12% of games, played 10% of the time, gives away 17%$/,
+      /^7\.\.\.Bg4, after 6\.\.\.Qd4 7\.O-O, set up in 12% of games, trapped 10% of the time, knowing it gains 12%$/,
     );
     expect(said.at(-1)).toMatch(/^3\.\.\.Nf6, after 2\.\.\.Nc6 3\.Qh5, .*, punished with mate$/);
     expect(onPlay).toHaveBeenCalledWith([...FIND.line, FIND.mistake]);
@@ -237,6 +241,20 @@ describe('OpportunityList', () => {
     const again: Find = { ...FIND, line: first.line.slice(0, -1), mistake: first.line.at(-1)! };
     const finder = { ...DONE, run: { finds: [again], running: false } };
     expect(labels({ finder })).toHaveLength(ranked.length);
+  });
+
+  it("leaves out a find the lesson marks once the board is past it, as the lesson's own row is", () => {
+    const [first] = ranked;
+    const again: Find = { ...FIND, line: first.line.slice(0, -1), mistake: first.line.at(-1)! };
+    const past = { line: first.line };
+    const ahead = lessonOpportunities(STAFFORD, BAND, first.line).length;
+    const finder = { ...DONE, run: { finds: [again], running: false } };
+    expect(labels({ ...past, finder })).toHaveLength(ahead);
+    const saved = { ...NONE_SAVED, finds: [savedFind(again, DONE.source)] };
+    expect(labels({ ...past, saved })).toHaveLength(ahead);
+    // Off the guide, nothing is left to list: no rows, so no column heads.
+    const offGuide = text({ line: uciLine('d4'), finder, saved });
+    expect(offGuide).not.toContain('Set up: how often');
   });
 
   it('leaves out a find that reaches a listed position by another order of moves', () => {
@@ -278,7 +296,7 @@ describe('OpportunityList', () => {
     expect(searching).toContain('the first finds take a few minutes');
     expect(searching).not.toContain('No opportunity found');
     expect(text({})).toContain('No opportunity found from here.');
-    const elsewhere = render(foundAt(FIND.cost), (host) => ({
+    const elsewhere = render(foundAt(FIND.gain), (host) => ({
       text: host.textContent ?? '',
       labels: labelsIn(host),
     }));

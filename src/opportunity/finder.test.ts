@@ -349,7 +349,7 @@ describe('findOpportunities', () => {
     expect(result.requests).toContainEqual({ kind: 'full', spot: { line, key } });
   });
 
-  it('shows a cue two mistakes lead to by the one most games play, not the busier position', () => {
+  it('counts every way into a cue two mistakes lead to, shown by the one most games play', () => {
     // 5.d3 Bc5 6.Nc3 (from a position 40% reach, 8% play 6.Nc3) and
     // 5.Nc3 Bc5 6.d3 (30% reach, 20% play 6.d3) meet at one cue.
     const QUIET = `${OPENING} Nc3 Bc5`;
@@ -397,8 +397,15 @@ describe('findOpportunities', () => {
     };
     expect(at(`${SETUP} Nc3`).key).toBe(at(SHARED).key);
     const shared = find(answers).finds.find((found) => found.mistake === last(SHARED));
-    expect(shared).toMatchObject({ line: uci(QUIET), share: 0.2, reach: expect.closeTo(0.3) });
-    expect(shared!.score).toBeCloseTo((0.4 * 0.08 + 0.3 * 0.2) * shared!.gain);
+    // Set up in 40% + 30% of games; trapped in 40% × 8% + 30% × 20% of them.
+    const trapped = 0.4 * 0.08 + 0.3 * 0.2;
+    expect(shared).toMatchObject({
+      line: uci(QUIET),
+      reach: expect.closeTo(0.7),
+      share: expect.closeTo(trapped / 0.7),
+    });
+    // Its numbers multiply to its score.
+    expect(shared!.score).toBeCloseTo(trapped * shared!.gain);
   });
 
   describe('Act III at the punishing side', () => {
@@ -608,7 +615,7 @@ describe('reachOf', () => {
       reply('A', 'C', 0.4),
       reply('B', 'C', 0.5, false),
     ];
-    const reach = reachOf('S', moves);
+    const reach = reachOf('S', moves, 10);
     expect(reach('C', false)).toBeCloseTo(0.5 * 0.4 + 0.2 * 0.5);
     expect(reach('C', true)).toBeCloseTo(0.5 * 0.4);
   });
@@ -622,13 +629,13 @@ describe('reachOf', () => {
       reply('A', 'Y', 0.4),
       reply('B', 'X', 0.8),
     ];
-    const reach = reachOf('P', moves);
+    const reach = reachOf('P', moves, 10);
     expect(reach('X', false)).toBeCloseTo(0.8);
     expect(reach('Y', false)).toBeCloseTo(0.4);
     expect(['P', 'A', 'B', 'X', 'Y'].every((key) => reach(key, false) <= 1)).toBe(true);
   });
 
-  it("counts the guide's fewest moves on the guide, beside a shorter way off it", () => {
+  it('counts move orders of every length, and with `guided`, only those the guide plays', () => {
     // S -> A -> B -> C on the guide; S -> C off it, in fewer moves.
     const moves = [
       reply('S', 'A', 0.5),
@@ -636,8 +643,8 @@ describe('reachOf', () => {
       reply('B', 'C', 0.5),
       reply('S', 'C', 0.1, false),
     ];
-    const reach = reachOf('S', moves);
-    expect(reach('C', false)).toBeCloseTo(0.1);
+    const reach = reachOf('S', moves, 10);
+    expect(reach('C', false)).toBeCloseTo(0.1 + 0.25);
     expect(reach('C', true)).toBeCloseTo(0.25);
   });
 
@@ -650,8 +657,37 @@ describe('reachOf', () => {
       reply('Z', 'X', 0.5),
       reply('Z', 'S', 0.5),
     ];
-    const reach = reachOf('S', moves);
+    const reach = reachOf('S', moves, 10);
     expect(['S', 'X', 'Y', 'Z'].map((key) => reach(key, false))).toEqual([1, 0.5, 0.5, 0.25]);
+  });
+
+  it('counts a move order that goes round a circle where it leads somewhere new, whatever the list order', () => {
+    // S -> X <-> Y, and S -> Y: the game S, Y, X gets to X first by way of Y.
+    const moves = [
+      reply('S', 'X', 0.5),
+      reply('X', 'Y', 0.5),
+      reply('Y', 'X', 0.5),
+      reply('S', 'Y', 0.5),
+    ];
+    for (const listed of [moves, [...moves].reverse()]) {
+      const reach = reachOf('S', listed, 10);
+      expect(reach('X', false)).toBeCloseTo(0.5 + 0.5 * 0.5);
+      expect(reach('Y', false)).toBeCloseTo(0.5 + 0.5 * 0.5);
+    }
+  });
+
+  it('counts only move orders within the plies the walk went', () => {
+    const moves = [reply('S', 'A', 0.5), reply('A', 'B', 0.5), reply('S', 'B', 0.1)];
+    expect(reachOf('S', moves, 1)('B', false)).toBeCloseTo(0.1);
+    expect(reachOf('S', moves, 2)('B', false)).toBeCloseTo(0.35);
+  });
+
+  it('counts the games that reach any of several positions once, steering toward any', () => {
+    // S -> X -> Y, and S -> Y directly: a game through X to Y counts at X.
+    const moves = [reply('S', 'X', 0.5), reply('X', 'Y', 0.5), reply('S', 'Y', 0.2)];
+    const reach = reachOf('S', moves, 10);
+    expect(reach(['X', 'Y'], false)).toBeCloseTo(0.5 + 0.2);
+    expect(reach('Y', false)).toBeCloseTo(0.25 + 0.2);
   });
 });
 

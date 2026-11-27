@@ -16,7 +16,7 @@ import { guideMove } from '@/lesson/select';
 import { RATING_BANDS } from '@/lichess/explorer';
 import { MAIA_RATINGS } from '@/maia/ratings';
 
-import { type Find, rankBy } from './finder';
+import { type Find, findScore, rankBy } from './finder';
 import type { ReplySource } from './walk';
 
 /**
@@ -24,8 +24,8 @@ import type { ReplySource } from './walk';
  * keeps them, and the numbers its one source measured.
  */
 export interface SavedFind
-  extends Omit<FindFragment, 'gain'>, Pick<Find, 'reach' | 'share' | 'score'> {
-  /** Whose replies measured `reach`, `share` and `score`: they never rank beside another source's. */
+  extends Omit<FindFragment, 'gain'>, Pick<Find, 'reach' | 'share' | 'gain'> {
+  /** Whose replies measured `reach`, `share` and `gain`: they never rank beside another source's. */
   readonly source: ReplySource;
 }
 
@@ -34,20 +34,21 @@ export type SavedFinds = Readonly<Record<string, readonly SavedFind[]>>;
 
 /** `find`, run with replies from `source`, as the device keeps it. */
 export const savedFind = (
-  { line, mistake, replies, payoff, cost, reach, share, score }: Find,
+  { line, mistake, replies, payoff, cost, reach, share, gain }: Find,
   source: ReplySource,
-): SavedFind => ({ line, mistake, replies, payoff, cost, source, reach, share, score });
+): SavedFind => ({ line, mistake, replies, payoff, cost, source, reach, share, gain });
 
 /**
  * The position `find`'s mistake leads to, its cue: one find is kept per cue,
- * as the finder keeps one. Worked out once per find, since it replays the line.
+ * as the finder keeps one. Worked out once per find, saved or the finder's,
+ * since it replays the line.
  */
-export function cueOf(find: SavedFind): PositionKey {
+export function cueOf(find: Pick<Find, 'line' | 'mistake'>): PositionKey {
   let cue = cues.get(find);
   if (cue === undefined) cues.set(find, (cue = lastStep([...find.line, find.mistake]).key));
   return cue;
 }
-const cues = new WeakMap<SavedFind, PositionKey>();
+const cues = new WeakMap<Pick<Find, 'line' | 'mistake'>, PositionKey>();
 
 /** `saved` with `find` among the lesson `lesson`'s, in place of one saved at its cue. */
 export function withSaved(saved: SavedFinds, lesson: string, find: SavedFind): SavedFinds {
@@ -91,7 +92,7 @@ const START = Chess.default();
 /** `value` as a saved find, in a list for `flatMap`: empty where it isn't one. */
 function readFind(value: unknown): SavedFind[] {
   if (!isObject(value)) return [];
-  const { line, mistake, replies, payoff, cost, source, reach, share, score } = value;
+  const { line, mistake, replies, payoff, cost, source, reach, share, gain, score } = value;
   if (
     !isMoves(line) ||
     typeof mistake !== 'string' ||
@@ -101,13 +102,35 @@ function readFind(value: unknown): SavedFind[] {
     !isNumber(cost) ||
     !isNumber(reach) ||
     !isNumber(share) ||
-    !isNumber(score) ||
+    !(reach > 0 && share > 0) ||
     !isSource(source)
   )
     return [];
-  const find: SavedFind = { line, mistake, replies, payoff, cost, source, reach, share, score };
+  const measured = isNumber(gain) ? gain : olderGain(reach, share, score);
+  if (measured === undefined) return [];
+  const find: SavedFind = {
+    line,
+    mistake,
+    replies,
+    payoff,
+    cost,
+    source,
+    reach,
+    share,
+    gain: measured,
+  };
   return findPlays(START, find) ? [find] : [];
 }
+
+/**
+ * The gain of a find saved before finds kept their gain, from the score it
+ * kept then: the cue's reach × gain, about reach × share × gain (more where
+ * another move order reaches the cue too), so an estimate. None where it kept
+ * no score. `readFind` has checked that reach and share are above 0.
+ */
+const olderGain = (reach: number, share: number, score: unknown) =>
+  // Another move order into the cue can push the estimate past all the winning chances: kept to them.
+  isNumber(score) ? Math.min(score / (reach * share), 1) : undefined;
 
 const isNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
@@ -151,8 +174,21 @@ function marks(lesson: Lesson, { line, mistake }: SavedFind): boolean {
   return !!guideMove(lesson, key, mistake)?.mistake;
 }
 
-/** Saved finds best first within one source (`rankBy`). */
-const bestFirst = rankBy<SavedFind>(({ line, mistake }) => [...line, mistake]);
+/** One source's saved finds best first (`rankBy`), by the score their three numbers multiply to (`findScore`), which nothing stores. */
+function bestFirst(finds: readonly SavedFind[]): SavedFind[] {
+  const scored = finds.map((find) => ({
+    find,
+    line: [...find.line, find.mistake],
+    reach: find.reach,
+    score: findScore(find.reach, find.share, find.gain),
+  }));
+  return scored.sort(rankScored).map(({ find }) => find);
+}
+const rankScored = rankBy<{
+  readonly line: readonly Uci[];
+  readonly reach: number;
+  readonly score: number;
+}>(({ line }) => line);
 
 /** One source's saved finds, best first. */
 export interface SavedGroup {
@@ -175,7 +211,7 @@ export function bySource(finds: readonly SavedFind[]): SavedGroup[] {
   }
   return [...groups.values()]
     .sort((a, b) => sourceOrder(a.source) - sourceOrder(b.source))
-    .map(({ source, finds: group }) => ({ source, finds: group.sort(bestFirst) }));
+    .map(({ source, finds: group }) => ({ source, finds: bestFirst(group) }));
 }
 
 const sourceId = (source: ReplySource) =>

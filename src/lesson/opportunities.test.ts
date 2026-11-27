@@ -5,7 +5,7 @@ import { type MarkedPositions, positionHash } from '@/progress/progress';
 import type { Lesson, LessonMove, Mistake, PositionKey } from './lesson';
 import { keyAfter, readShippedLesson, SAMPLE, uci, uciLine } from './lesson.fixture';
 import { opportunityMarks } from './marks';
-import { lessonOpportunities } from './opportunities';
+import { guideCues, lessonOpportunities } from './opportunities';
 
 /** A move after `sans`, written in SAN, played in `games` games of the one band. */
 const move = (sans: string[], san: string, games: number, extra: Partial<LessonMove> = {}) => ({
@@ -18,7 +18,7 @@ const mistake = (fields: Mistake) => ({ mistake: fields });
 /**
  * A small Black repertoire, one band of counts. After 1.e4 e5, 40 of 100
  * games play the marked 2.Qh5 (gain 0.5); after 2.Nf3 Nc6, 10 of 100 play
- * the marked 3.Nxe5 (gain 0.2), so 0.6 × 0.1 × 0.2 ranks under 0.4 × 0.5.
+ * the marked 3.Nxe5 (gain 0.2), so 0.3 × 0.1 × 0.2 ranks under 0.5 × 0.4 × 0.5.
  * The book's 2...Nc6 answers 2.Qh5 and ends a line.
  * After 1.d4 d5, the marked 2.c4 has no gain yet: a trap from a guide.
  */
@@ -66,9 +66,9 @@ const LESSON: Lesson = {
 };
 
 describe('lessonOpportunities', () => {
-  const list = lessonOpportunities(LESSON, 0);
+  const list = lessonOpportunities(LESSON, 0, []);
 
-  it("ranks by the cue's reach × gain, the unscored after", () => {
+  it('ranks by reach × share × gain, the unscored after', () => {
     expect(list.map(({ san }) => san)).toEqual(['Qh5', 'Nxe5', 'c4']);
     const [qh5, nxe5, c4] = list;
     expect(qh5).toMatchObject({ reach: 0.5, share: 0.4, score: 0.5 * 0.4 * 0.5 });
@@ -84,8 +84,53 @@ describe('lessonOpportunities', () => {
     expect(qh5.next).toBe(at('e4', 'e5', 'Qh5'));
   });
 
+  it("counts reach from the board's position, leaving out the mistakes it can't reach", () => {
+    const from = (...sans: string[]) =>
+      lessonOpportunities(LESSON, 0, uciLine(...sans)).map(({ san, reach, line }) => ({
+        san,
+        reach,
+        line,
+      }));
+    // Nearer a mistake, more of the games from here reach it.
+    expect(from('e4', 'e5')).toEqual([
+      { san: 'Qh5', reach: 1, line: uciLine('e4', 'e5', 'Qh5') },
+      { san: 'Nxe5', reach: expect.closeTo(0.6), line: uciLine('e4', 'e5', 'Nf3', 'Nc6', 'Nxe5') },
+    ]);
+    // Past 2.Qh5, and away from 1.d4.
+    expect(from('e4', 'e5', 'Nf3').map(({ san }) => san)).toEqual(['Nxe5']);
+    expect(from('d4').map(({ san }) => san)).toEqual(['c4']);
+    // The same line twice is the same list, worked out once.
+    const twice = uciLine('e4', 'e5');
+    expect(lessonOpportunities(LESSON, 0, twice)).toBe(lessonOpportunities(LESSON, 0, [...twice]));
+    // Off the guide, or past every mistake.
+    expect(from('e4', 'c5')).toEqual([]);
+    expect(from('e4', 'e5', 'Qh5')).toEqual([]);
+  });
+
+  it("lists the cues of the lesson's opportunities from its start, wherever the board is", () => {
+    const cues = list.map(({ next }) => next);
+    lessonOpportunities(LESSON, 0, uciLine('e4', 'e5', 'Qh5'));
+    expect([...guideCues(LESSON)]).toEqual(expect.arrayContaining(cues));
+    expect(guideCues(LESSON).size).toBe(cues.length);
+  });
+
+  it('keeps the lists of the 16 positions last asked for', () => {
+    const lesson: Lesson = { ...LESSON };
+    const ask = (...sans: string[]) => lessonOpportunities(lesson, 0, uciLine(...sans));
+    const first = ask();
+    const others = ['a3', 'a4', 'b3', 'b4', 'c3', 'c4', 'd3', 'e3', 'f3', 'f4', 'g3', 'g4'];
+    for (const san of others) ask(san);
+    // Asked for again, the start is the newest kept.
+    expect(ask()).toBe(first);
+    for (const san of ['h3', 'h4', 'Na3', 'Nh3']) ask(san);
+    expect(ask()).toBe(first);
+    // Sixteen new positions since (each with 1...e5 after it): the start is worked out again.
+    for (const san of [...others, 'h3', 'h4', 'Na3', 'Nh3']) ask(san, 'e5');
+    expect(ask()).not.toBe(first);
+  });
+
   it('leaves the reach, shares and scores out without a band', () => {
-    const unbanded = lessonOpportunities(LESSON, undefined);
+    const unbanded = lessonOpportunities(LESSON, undefined, []);
     expect(unbanded).toHaveLength(3);
     expect(
       unbanded.every(
@@ -96,8 +141,8 @@ describe('lessonOpportunities', () => {
   });
 
   it("lists none of the learner's own mistakes", () => {
-    expect(lessonOpportunities(LESSON, 0)).not.toEqual([]);
-    expect(lessonOpportunities({ ...LESSON, side: 'white' }, 0)).toEqual([]);
+    expect(lessonOpportunities(LESSON, 0, [])).not.toEqual([]);
+    expect(lessonOpportunities({ ...LESSON, side: 'white' }, 0, [])).toEqual([]);
   });
 
   it("leaves out a mistake only a learner's move off the book leads to", () => {
@@ -118,7 +163,7 @@ describe('lessonOpportunities', () => {
         },
       },
     };
-    expect(lessonOpportunities(offBook, 0)).toEqual([]);
+    expect(lessonOpportunities(offBook, 0, [])).toEqual([]);
   });
 
   it("lists a mistake on the lesson's first move, at its start", () => {
@@ -133,7 +178,7 @@ describe('lessonOpportunities', () => {
         [at('f3')]: { variation, moves: [move(['f3'], 'e5', 10, { book: true })], games: [10] },
       },
     };
-    expect(lessonOpportunities(first, 0).map(({ line }) => line)).toEqual([[uci('f3')]]);
+    expect(lessonOpportunities(first, 0, []).map(({ line }) => line)).toEqual([[uci('f3')]]);
   });
 
   it('shares the games equally among the moves where the band counts none', () => {
@@ -142,24 +187,24 @@ describe('lessonOpportunities', () => {
       ...LESSON,
       positions: { ...LESSON.positions, [at()]: { variation, moves: [{ uci: uci('e4') }] } },
     };
-    const [qh5] = lessonOpportunities(uncounted, 0);
+    const [qh5] = lessonOpportunities(uncounted, 0, []);
     expect(qh5).toMatchObject({ san: 'Qh5', reach: 1 });
   });
 
-  it("ranks the Stafford lesson's top three for 1400 players by worth, not reach", () => {
-    const stafford = lessonOpportunities(readShippedLesson('stafford'), 2);
+  it("ranks the Stafford lesson's top three for 1400 players by worth, not reach alone", () => {
+    const stafford = lessonOpportunities(readShippedLesson('stafford'), 2, []);
     expect(stafford.every(({ score }) => score !== undefined)).toBe(true);
     const after = (...sans: string[]) =>
       uciLine('e4', 'e5', 'Nf3', 'Nf6', 'Nxe5', 'Nc6', 'Nxc6', 'dxc6', ...sans);
     const top = stafford.slice(0, 3);
     expect(top.map(({ line }) => line)).toEqual([
-      after('Nc3', 'Bc5', 'd3'),
       after('Nc3', 'Bc5', 'Bc4'),
       after('d3', 'Bc5', 'Bg5'),
+      after('Nc3', 'Bc5', 'd3'),
     ]);
-    // By what knowing each is worth, not by reach: 6.Bg5 comes more often.
-    expect(top[2].reach).toBeGreaterThan(top[0].reach ?? 1);
-    expect(top.map(({ mates }) => mates)).toEqual([false, true, true]);
+    // By what knowing each is worth, not by reach alone: 6.Bg5 comes more often.
+    expect(top[1].reach).toBeGreaterThan(top[0].reach ?? 1);
+    expect(top.map(({ mates }) => mates)).toEqual([true, true, false]);
   });
 });
 
@@ -168,7 +213,7 @@ describe('opportunityMarks', () => {
     seen: seen.map(positionHash),
     passed: passed.map(positionHash),
   });
-  const list = lessonOpportunities(LESSON, 0);
+  const list = lessonOpportunities(LESSON, 0, []);
 
   it('marks a mistake seen once its cue was shown, passed once every line end below it is', () => {
     const marks = (progress: MarkedPositions) =>

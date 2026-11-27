@@ -14,7 +14,7 @@ import {
 import { useDeferredValue, useMemo } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
-import { lostPercent, percent } from '@/analysis/quality';
+import { finePercent } from '@/analysis/quality';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { type IconAction, IconActions } from '@/components/IconActions';
 import { Notation } from '@/components/Notation';
@@ -23,7 +23,7 @@ import { lastPosition, lastStep, lineText, numberedMove } from '@/game/replay';
 import { bandRatings, type Lesson, type PositionKey, type Uci } from '@/lesson/lesson';
 import { opportunityMarks } from '@/lesson/marks';
 import { markId } from '@/lesson/mistakes';
-import { lessonOpportunities, type Opportunity } from '@/lesson/opportunities';
+import { guideCues, lessonOpportunities, type Opportunity } from '@/lesson/opportunities';
 import { RATING_BANDS } from '@/lichess/explorer';
 import type { Find } from '@/opportunity/finder';
 import { bySource, cueOf, type SavedFind } from '@/opportunity/saved';
@@ -40,6 +40,8 @@ interface Props {
   readonly lesson: Lesson;
   /** The opponent's rating band (`opponentBand`), which ranks the rows. */
   readonly band: number | undefined;
+  /** The board's moves from the lesson's start: the rows are the mistakes still ahead, reached from there. */
+  readonly line: readonly Uci[];
   /** The lesson's progress, for each row's mark. */
   readonly progress: MarkedPositions;
   /** Whose games the counts are (`bandPlayers`), for the heading's tooltip. */
@@ -83,18 +85,20 @@ export interface FinderProps {
 /**
  * The lesson's opportunities (`lessonOpportunities`), best first, one row
  * each: its name over the mistake, or the mistake over the two moves
- * before it, then three meters: how often games reach it, how often the
- * opponent plays the mistake there, and what the mistake gives away ("#"
- * where the punishment mates). A row's progress mark leads
- * it, as the move's row has it in the candidate list. Pressing a row plays
- * Act I and hands the learner the board at the cue. After them, the
- * finder's (`FinderPart`): run from the board's position, its finds join
- * as Stockfish confirms them, ranked apart, since their shares are Maia's
- * estimate rather than counted games.
+ * before it, then three meters: Set up (how often the learner's games get
+ * to the position the mistake is played in), Trapped (how often the
+ * opponent then plays it) and Gain (what knowing the punishment adds to the
+ * learner's winning chances each time). Its rank multiplies those three. A
+ * row's progress mark leads it, as the move's row has it in the candidate
+ * list. Pressing a row plays Act I and hands the learner the board at the
+ * cue. After them, the finder's (`FinderPart`): run from the board's
+ * position, its finds join as Stockfish confirms them, ranked apart, since
+ * their shares are Maia's estimate rather than counted games.
  */
 export function OpportunityList({
   lesson,
   band,
+  line,
   progress,
   players,
   onPlay,
@@ -103,14 +107,14 @@ export function OpportunityList({
   density,
 }: Props) {
   // Worked out after the screen shows, and again after a change of lesson,
-  // band or progress, since a big lesson's walk takes a moment.
-  const asked = useMemo(() => ({ lesson, band, progress }), [lesson, band, progress]);
+  // band, the board's position or progress, since a big lesson's walk takes a moment.
+  const asked = useMemo(() => ({ lesson, band, line, progress }), [lesson, band, line, progress]);
   const shown = useDeferredValue<typeof asked | undefined>(asked, undefined);
   const labelled = useLabelled();
   const compact = density === 'compact';
   const styles = compact ? COMPACT : COMFORTABLE;
   const rows = useMemo(
-    () => (shown ? lessonOpportunities(shown.lesson, shown.band) : NONE),
+    () => (shown ? lessonOpportunities(shown.lesson, shown.band, shown.line) : NONE),
     [shown],
   );
   const marks = shown ? opportunityMarks(shown.lesson, shown.progress, rows) : [];
@@ -126,7 +130,8 @@ export function OpportunityList({
       bookmark={savedCues.has(row.next) ? unsaveAction(row.next, saved.onUnsave) : undefined}
     />
   ));
-  const listed = useMemo(() => new Set(rows.map(({ next }) => next)), [rows]);
+  // Every cue the lesson lists from its start, so a find on one the board has passed stays off the finder's and saved parts.
+  const listed = shown ? guideCues(shown.lesson) : NO_CUES;
   // The finder lists only what neither the lesson nor the saved finds list.
   const taken = useMemo(() => new Set([...listed, ...savedCues]), [listed, savedCues]);
   const found = (
@@ -141,8 +146,11 @@ export function OpportunityList({
       />
     </>
   );
-  // Some row shows: a saved or found find is left out only where another row lists its position.
-  const anyRow = rows.length > 0 || saved.finds.length > 0 || finder.run.finds.length > 0;
+  // The column heads show only where some row does, so a find another row's cue leaves out doesn't count.
+  const anyRow =
+    rows.length > 0 ||
+    [...savedCues].some((cue) => !listed.has(cue)) ||
+    finder.run.finds.some((find) => !taken.has(cueOf(find)));
   return (
     <Stack style={compact ? STATIC.compact : labelled}>
       <View style={[STATIC.line, STATIC.headWrap]}>
@@ -344,26 +352,29 @@ function sourceChip(source: ReplySource) {
 
 /** What the list ranks, against `players` where counted; each meter's column says what it shows (`COLUMNS`). */
 const listTip = (players: string | undefined) =>
-  `The opponent's mistakes the guide marks, best first by what knowing each is worth per game${
-    players ? ` against ${players}` : ''
-  }, or where that isn't measured yet, by how often your games reach it. Tap one to play up to your cue.`;
+  `The opponent's mistakes the guide marks that the board can still reach${
+    players ? `, against ${players}` : ''
+  }, best first by set up \u00d7 trapped \u00d7 gain, which multiply to the winning chances knowing it adds per game. Those not measured yet come last, by how often your games set them up. Tap one to play up to your cue.`;
+
+/** After a row's mistake, where its punishment mates (the gain column's tip says so). */
+const MATE_MARK = '#';
 
 /** The rows' three meters, left to right: each column's icon, and what it shows in its tooltip. */
 const COLUMNS = [
   {
-    meter: 'reach',
+    meter: 'setUp',
     icon: 'footsteps-outline',
-    tip: 'Reached: how often your games get to the position the mistake is played in. \u2013 means no games counted.',
+    tip: "Set up: how often your games get from the board's position, by any move order, to one where the trap is set, where the opponent can make the mistake. \u2013 means no games counted.",
   },
   {
-    meter: 'share',
-    icon: 'people-outline',
-    tip: 'Played: how often the opponent makes the mistake there. \u2013 means no count for this move.',
+    meter: 'trapped',
+    icon: 'fish-outline',
+    tip: 'Trapped: once the trap is set up, how often the opponent walks into the trap by playing the mistake. \u2013 means no count for this move.',
   },
   {
-    meter: 'payoff',
+    meter: 'gain',
     icon: 'trophy-outline',
-    tip: "Payoff: the winning chances the mistake gives away; # is mate. \u2013 means Stockfish hasn't judged it yet.",
+    tip: `Gain: each time the opponent is trapped, the winning chances you add by knowing the punishment, rather than playing what most players at your level play. \u2013 means it isn't measured yet; ${MATE_MARK} beside a move, the punishment mates.`,
   },
 ] as const;
 type Meter = (typeof COLUMNS)[number]['meter'];
@@ -396,8 +407,11 @@ function ColumnHeads({ styles }: { readonly styles: Styles }) {
 /** No rows, the same each render. */
 const NONE: readonly Opportunity[] = [];
 
-/** The payoff meter's full width: a mistake costing this much of the expected score, or mate. */
-const FULL_COST = 0.6;
+/** No lesson shown yet: no cues to leave out. */
+const NO_CUES: ReadonlySet<PositionKey> = new Set();
+
+/** The gain meter's full width: knowing the punishment adds this much expected score. */
+const FULL_GAIN = 0.3;
 
 /** What a row shows, from the lesson's opportunity (`lessonRow`) or a find (`findRow`). */
 interface ListRow {
@@ -411,15 +425,15 @@ interface ListRow {
   readonly reach?: number;
   readonly share?: number;
   readonly mates: boolean;
-  /** The expected score the mistake gives away, where judged. */
-  readonly cost?: number;
+  /** What knowing the punishment adds to the expected score at the cue, where measured. */
+  readonly gain?: number;
   readonly mark?: Mark;
   /** What a press plays, for screen readers. */
   readonly hint: string;
 }
 
 const lessonRow = (
-  { move, san, line, next, reach, share, mates }: Opportunity,
+  { move, san, line, next, reach, share, mates, gain }: Opportunity,
   mark: Mark | undefined,
 ): ListRow => ({
   line,
@@ -429,7 +443,7 @@ const lessonRow = (
   reach,
   share,
   mates,
-  cost: move.mistake?.cost,
+  gain,
   mark,
   hint: 'Plays the line up to your cue',
 });
@@ -442,8 +456,8 @@ function findRow({
   payoff,
   reach,
   share,
-  cost,
-}: Pick<Find, 'line' | 'mistake' | 'replies' | 'payoff' | 'reach' | 'share' | 'cost'>): ListRow {
+  gain,
+}: Pick<Find, 'line' | 'mistake' | 'replies' | 'payoff' | 'reach' | 'share' | 'gain'>): ListRow {
   const through = [...line, mistake];
   const { key, move } = lastStep(through);
   return {
@@ -453,7 +467,7 @@ function findRow({
     reach,
     share,
     mates: lastPosition([...through, replies[0], ...payoff]).result?.reason === 'checkmate',
-    cost,
+    gain,
     hint: 'Plays the line through the mistake',
   };
 }
@@ -475,23 +489,19 @@ function Row({
   readonly bookmark?: IconAction;
 }) {
   const { color } = useTheme().theme.semantic;
-  const { san, line, name, reach, share, mates, cost, mark } = row;
+  const { san, line, name, reach, share, mates, gain, mark } = row;
   const mistake = numberedMove(san, line.length);
   // Without a name, the two moves before it tell apart one mistake played after several.
   const caption = name ? mistake : leadIn(line);
-  // A dash only where unjudged, as each column's tip says; "0%" where judged but it rounds to nothing.
-  const payoff = mates
-    ? '#'
-    : cost === undefined
-      ? '–'
-      : lostPercent(cost)
-        ? `\u2212${percent(cost)}`
-        : '0%';
   // Each meter's number and how full its bar is, in its column (`COLUMNS`).
   const meters: Record<Meter, { label: string; fill: number }> = {
-    reach: { label: reach === undefined ? '–' : percent(reach), fill: reach ?? 0 },
-    share: { label: share === undefined ? '–' : percent(share), fill: share ?? 0 },
-    payoff: { label: payoff, fill: mates ? 1 : Math.min((cost ?? 0) / FULL_COST, 1) },
+    setUp: { label: reach === undefined ? '–' : finePercent(reach), fill: reach ?? 0 },
+    trapped: { label: share === undefined ? '–' : finePercent(share), fill: share ?? 0 },
+    // Always the learner's gain, so a plus: never read as what they lose.
+    gain: {
+      label: gain === undefined ? '–' : `+${finePercent(gain)}`,
+      fill: Math.min((gain ?? 0) / FULL_GAIN, 1),
+    },
   };
   return (
     <View style={STATIC.line}>
@@ -500,9 +510,10 @@ function Row({
         accessibilityLabel={[
           name ?? mistake,
           caption,
-          reach !== undefined && `reached in ${percent(reach)} of games`,
-          share !== undefined && `played ${percent(share)} of the time`,
-          mates ? 'punished with mate' : cost !== undefined && `gives away ${percent(cost)}`,
+          reach !== undefined && `set up in ${finePercent(reach)} of games`,
+          share !== undefined && `trapped ${finePercent(share)} of the time`,
+          gain !== undefined && `knowing it gains ${finePercent(gain)}`,
+          mates && 'punished with mate',
           mark && SPOKEN_MARKS[mark],
         ]
           .filter(Boolean)
@@ -518,9 +529,17 @@ function Row({
       >
         <View style={STATIC.mark}>{mark ? <ProgressMark mark={mark} /> : null}</View>
         <View style={STATIC.title} aria-hidden>
-          <Text role="body" numberOfLines={1}>
-            {name ?? <Notation>{mistake}</Notation>}
-          </Text>
+          {/* The mark beside the name, never cut off with it. */}
+          <View style={STATIC.line}>
+            <Text role="body" numberOfLines={1} style={STATIC.shrink}>
+              {name ?? <Notation>{mistake}</Notation>}
+            </Text>
+            {mates ? (
+              <Text role="body" tone="danger">
+                {` ${MATE_MARK}`}
+              </Text>
+            ) : null}
+          </View>
           {caption ? (
             <Text role="caption" tone="secondary" style={STATIC.mono} numberOfLines={1}>
               <Notation>{caption}</Notation>
@@ -573,6 +592,7 @@ const STATIC = StyleSheet.create({
   headWrap: { flexWrap: 'wrap' },
   finderHead: { paddingTop: 10, paddingBottom: 2 },
   grow: { flexGrow: 1 },
+  shrink: { flexShrink: 1 },
   compact: { gap: 4 },
   empty: { paddingVertical: 8 },
   card: { overflow: 'hidden', paddingVertical: 4 },
@@ -621,8 +641,9 @@ function densityStyles(
 }
 type Styles = ReturnType<typeof densityStyles>;
 
-// A phone's rows run to the page's edge; a card's keep inside it.
-const COMPACT = densityStyles(32, { minHeight: 44 }, { inset: 0, bookmarkInset: 0, edge: 0 });
+// A phone's rows run to the page's edge; a card's keep inside it. A meter fits
+// its widest label on one line: a gain under 10%, such as "+7.0%".
+const COMPACT = densityStyles(40, { minHeight: 44 }, { inset: 0, bookmarkInset: 0, edge: 0 });
 const COMFORTABLE = densityStyles(
   44,
   { paddingVertical: 8 },

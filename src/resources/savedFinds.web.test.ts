@@ -18,7 +18,7 @@ const FIND: SavedFind = {
   source: { from: 'maia', rating: 1500 },
   reach: 0.4,
   share: 0.05,
-  score: 0.01,
+  gain: 0.5,
 };
 /** 2...d6 3.Nxe5? dxe5. */
 const OTHER: SavedFind = {
