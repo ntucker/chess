@@ -284,8 +284,8 @@ function reachOver(start: PositionKey, steps: readonly PlyMove[]) {
  * from its moves' values one ply later, so read from the last ply back, each
  * value is complete before a move into it reads it. Each step is read once,
  * so the work grows with the moves times the plies each can be played at,
- * not with the move orders. A game that
- * reaches a target is counted there, so moves out of a target are not read.
+ * not with the move orders. A game that reaches a target is counted there,
+ * so moves out of a target are not read.
  */
 function steeredReach(
   start: PositionKey,

@@ -64,22 +64,29 @@ function markedMistakes(lesson: Lesson): readonly MarkedMove[] {
 }
 const marked = new WeakMap<Lesson, readonly MarkedMove[]>();
 
-/** The cue of each of the other side's marked mistakes in `lesson`, wherever the board is. Read once per lesson. */
-export function markedCues(lesson: Lesson): ReadonlySet<PositionKey> {
+/**
+ * The cues of the opportunities `lesson` lists from its start
+ * (`lessonOpportunities`): its marked mistakes the guide leads to, wherever
+ * the board is now. Read once per lesson; no band is needed, since which
+ * mistakes the guide leads to doesn't depend on one.
+ */
+export function guideCues(lesson: Lesson): ReadonlySet<PositionKey> {
   let found = cues.get(lesson);
   if (!found) {
-    found = new Set(
-      markedMistakes(lesson).map(({ key, move }) => {
-        const pos = readPositionKey(key)!;
-        pos.play(parseUci(move.uci)!); // checked lines (check.ts)
-        return positionKey(pos);
-      }),
-    );
+    found = new Set(lessonOpportunities(lesson, undefined, []).map(({ next }) => next));
     cues.set(lesson, found);
   }
   return found;
 }
 const cues = new WeakMap<Lesson, ReadonlySet<PositionKey>>();
+
+/**
+ * How many times the walk's depth a move order through the moves it went may
+ * take and still count: a longer detour is rare, and counting further costs
+ * a pass per ply where a circle goes round (twice costs what the fewest-move
+ * reach did, measured on the Caro-Kann).
+ */
+const DETOUR = 2;
 
 /** Where the guide's walk starts: the board's position and its key. */
 type WalkStart = Pick<Node, 'key' | 'pos'>;
@@ -305,8 +312,7 @@ function guideLines(
       }
     }
   });
-  // A move order through the moves the walk went may take longer than its depth: up to twice it counts.
-  return { start, moves, plies: 2 * levels.length, lines: linesInto(reached, wanted) };
+  return { start, moves, plies: DETOUR * levels.length, lines: linesInto(reached, wanted) };
 }
 
 /**

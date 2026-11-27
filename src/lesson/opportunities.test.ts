@@ -5,7 +5,7 @@ import { type MarkedPositions, positionHash } from '@/progress/progress';
 import type { Lesson, LessonMove, Mistake, PositionKey } from './lesson';
 import { keyAfter, readShippedLesson, SAMPLE, uci, uciLine } from './lesson.fixture';
 import { opportunityMarks } from './marks';
-import { lessonOpportunities } from './opportunities';
+import { guideCues, lessonOpportunities } from './opportunities';
 
 /** A move after `sans`, written in SAN, played in `games` games of the one band. */
 const move = (sans: string[], san: string, games: number, extra: Partial<LessonMove> = {}) => ({
@@ -105,6 +105,13 @@ describe('lessonOpportunities', () => {
     // Off the guide, or past every mistake.
     expect(from('e4', 'c5')).toEqual([]);
     expect(from('e4', 'e5', 'Qh5')).toEqual([]);
+  });
+
+  it("lists the cues of the lesson's opportunities from its start, wherever the board is", () => {
+    const cues = list.map(({ next }) => next);
+    lessonOpportunities(LESSON, 0, uciLine('e4', 'e5', 'Qh5'));
+    expect([...guideCues(LESSON)]).toEqual(expect.arrayContaining(cues));
+    expect(guideCues(LESSON).size).toBe(cues.length);
   });
 
   it('keeps the lists of the 16 positions last asked for', () => {

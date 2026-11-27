@@ -23,7 +23,7 @@ import { lastPosition, lastStep, lineText, numberedMove } from '@/game/replay';
 import { bandRatings, type Lesson, type PositionKey, type Uci } from '@/lesson/lesson';
 import { opportunityMarks } from '@/lesson/marks';
 import { markId } from '@/lesson/mistakes';
-import { lessonOpportunities, markedCues, type Opportunity } from '@/lesson/opportunities';
+import { guideCues, lessonOpportunities, type Opportunity } from '@/lesson/opportunities';
 import { RATING_BANDS } from '@/lichess/explorer';
 import type { Find } from '@/opportunity/finder';
 import { bySource, cueOf, type SavedFind } from '@/opportunity/saved';
@@ -130,8 +130,8 @@ export function OpportunityList({
       bookmark={savedCues.has(row.next) ? unsaveAction(row.next, saved.onUnsave) : undefined}
     />
   ));
-  // Every cue the lesson marks, so a find on one the board has passed stays off the finder's and saved parts.
-  const listed = shown ? markedCues(shown.lesson) : NO_CUES;
+  // Every cue the lesson lists from its start, so a find on one the board has passed stays off the finder's and saved parts.
+  const listed = shown ? guideCues(shown.lesson) : NO_CUES;
   // The finder lists only what neither the lesson nor the saved finds list.
   const taken = useMemo(() => new Set([...listed, ...savedCues]), [listed, savedCues]);
   const found = (
@@ -407,7 +407,7 @@ function ColumnHeads({ styles }: { readonly styles: Styles }) {
 /** No rows, the same each render. */
 const NONE: readonly Opportunity[] = [];
 
-/** No moves played: the line to the lesson's start. */
+/** No lesson shown yet: no cues to leave out. */
 const NO_CUES: ReadonlySet<PositionKey> = new Set();
 
 /** The gain meter's full width: knowing the punishment adds this much expected score. */
