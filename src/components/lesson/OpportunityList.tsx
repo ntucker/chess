@@ -375,7 +375,7 @@ const COLUMNS = [
   {
     meter: 'setUp',
     icon: 'footsteps-outline',
-    tip: "Set up: how often your games get from the board's position to the one where the trap is set, where the opponent can make the mistake. \u2013 means no games counted.",
+    tip: "Set up: how often your games get from the board's position, by any move order, to one where the trap is set, where the opponent can make the mistake. \u2013 means no games counted.",
   },
   {
     meter: 'trapped',
