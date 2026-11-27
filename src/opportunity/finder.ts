@@ -176,6 +176,7 @@ export function findOpportunities({
       } else if (next.reach >= limits.reachFloor) frontier.push(next);
     }
   }
+  // The walk plays moves from positions up to `maxPlies` past the opening: that many and one more.
   const reach = reachOf(opening.key, moves, limits.maxPlies + 1);
   const setUps = new Map<PositionKey, PositionKey[]>();
   for (const { from, to, chosen } of moves) if (!chosen) append(setUps, to, from);
@@ -278,7 +279,8 @@ function reachOver(start: PositionKey, steps: readonly PlyMove[]) {
  * targets (1 each, at every ply up to `within`) over `steps`, a position's value at each ply
  * from its moves' values one ply later, so read from the last ply back, each
  * value is complete before a move into it reads it. Each step is read once,
- * so the work grows with the moves, not with the move orders. A game that
+ * so the work grows with the moves times the plies each can be played at,
+ * not with the move orders. A game that
  * reaches a target is counted there, so moves out of a target are not read.
  */
 function steeredReach(
@@ -287,15 +289,15 @@ function steeredReach(
   within: number,
   steps: readonly PlyMove[],
 ): number {
-  const reach: Map<PositionKey, number>[] = [];
+  const byPly: Map<PositionKey, number>[] = [];
   const at = (key: PositionKey, ply: number) =>
-    targets.has(key) ? (ply <= within ? 1 : 0) : (reach[ply]?.get(key) ?? 0);
+    targets.has(key) ? (ply <= within ? 1 : 0) : (byPly[ply]?.get(key) ?? 0);
   for (let i = steps.length - 1; i >= 0; i--) {
     const { move, ply } = steps[i];
     if (targets.has(move.from)) continue;
     const through = at(move.to, ply + 1) * move.share;
     if (!through) continue;
-    const values = (reach[ply] ??= new Map());
+    const values = (byPly[ply] ??= new Map());
     const before = values.get(move.from) ?? 0;
     values.set(move.from, move.chosen ? Math.max(before, through) : before + through);
   }

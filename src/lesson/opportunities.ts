@@ -288,7 +288,8 @@ function guideLines(
       }
     }
   });
-  return { start, moves, plies: levels.length, lines: linesInto(reached, wanted) };
+  // A move order through the moves the walk went may take longer than its depth: up to twice it counts.
+  return { start, moves, plies: 2 * levels.length, lines: linesInto(reached, wanted) };
 }
 
 /**
