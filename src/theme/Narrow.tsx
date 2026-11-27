@@ -12,6 +12,7 @@ import {
   PX,
   type Px,
   type ScrollingPart,
+  PAGED_PARTS,
 } from '@/theme/narrow';
 
 /**
@@ -182,20 +183,23 @@ export function NarrowScroll({
   if (NARROW_CSS_LOADS) {
     return <View {...partProps(narrow, name, style)}>{children}</View>;
   }
+  const fades = narrow && !(PAGED_PARTS as readonly ScrollingPart[]).includes(name);
   return (
     <ScrollView
       {...partProps(narrow, name, style)}
-      contentContainerStyle={narrow && FADED}
+      contentContainerStyle={narrow && (fades ? FADED : FILLS)}
       scrollEnabled={narrow}
       nestedScrollEnabled
-      fadingEdgeLength={narrow ? FADING_EDGE : 0}
+      fadingEdgeLength={fades ? FADING_EDGE : 0}
     >
       {children}
     </ScrollView>
   );
 }
 
-const FADED = { flexGrow: 1, paddingBottom: NARROW_PX.fade } as const satisfies ViewStyle;
+// Its content fills it, so a phone's pages (`PhonePages`) stretch to its foot.
+const FILLS = { flexGrow: 1 } as const satisfies ViewStyle;
+const FADED = { ...FILLS, paddingBottom: NARROW_PX.fade } as const satisfies ViewStyle;
 const FADING_EDGE = { start: 0, end: NARROW_PX.fade };
 
 /**
