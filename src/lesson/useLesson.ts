@@ -236,7 +236,6 @@ export function useLesson(
     playing: playing?.played,
     engine: { best: lines?.[0].uci, top: engineRows, final, verdicts },
     refutation: game.refutation,
-    quality: game.quality,
   });
   // The cue is felt as it lands: when the opponent plays the mistake, not
   // when the board steps back onto it or the screen opens there. A mistake
@@ -301,6 +300,7 @@ export function useLesson(
       guidance: shown,
       current,
       canMove,
+      quality: game.quality,
       frame,
     }),
     // As the game records it, so a king dropped on its rook is the book castle.

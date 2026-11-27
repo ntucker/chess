@@ -1,7 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { MoveQuality } from '@/analysis/quality';
-
 import {
   cueActs,
   guidance,
@@ -63,14 +61,12 @@ function shown(
     engine = ENGINE,
     picking = sans.length === 0,
     refutation,
-    quality,
   }: {
     pointer?: Pointer;
     lifted?: Candidate['from'];
     engine?: { best?: string; top?: string[]; final?: boolean };
     picking?: boolean;
     refutation?: string;
-    quality?: MoveQuality;
   } = {},
 ): Guidance {
   const view = sampleView(sans);
@@ -86,7 +82,6 @@ function shown(
     lifted,
     engine: stockfish,
     refutation,
-    quality,
   });
 }
 
@@ -306,15 +301,6 @@ describe('guidance', () => {
       expect(marked.candidates.map(({ san }) => san)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
       expect(marked.drawnCandidates.map(({ san }) => san)).toEqual(['exd5', 'Nc3', 'Nd2']);
     });
-  });
-
-  it('badges the label of the move just played only in Explore with "Arrows" on', () => {
-    const label = (mode: LessonMode, showMoves: boolean) =>
-      shown(ADVANCE, mode, { showMoves }, { quality: 'best' }).quality;
-    expect(label('explore', true)).toBe('best');
-    expect(label('explore', false)).toBeUndefined();
-    expect(label('practice', true)).toBeUndefined();
-    expect(label('practice', false)).toBeUndefined();
   });
 
   describe('Practice', () => {

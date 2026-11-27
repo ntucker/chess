@@ -57,6 +57,13 @@ const LEAST_LOSS: readonly (readonly [number, MoveQuality])[] = [
 /** An expected score (0 to 1) as a percentage of the winning chances: "15%". */
 export const percent = (score: number) => `${Math.round(score * 100)}%`;
 
+/** A share as `percent` shows it, but to a tenth under 10% ("3.5%"), so small shares that differ read apart. */
+export function finePercent(share: number): string {
+  // Rounded first, so a share just under 10% reads "10%", never "10.0%".
+  const tenths = Math.round(share * 1000);
+  return tenths < 100 ? `${(tenths / 10).toFixed(1)}%` : percent(share);
+}
+
 /**
  * The expected score a move gave away (0 to 1) as `percent` shows it, when
  * that shows any: "26%" for 0.26, nothing for 0.004 or a gain.

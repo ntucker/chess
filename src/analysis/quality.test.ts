@@ -4,6 +4,7 @@ import type { AnalysisLine, Evaluation, FinalAnalysis } from '@/evaluation/evalu
 
 import {
   engineVerdict,
+  finePercent,
   judgeMove,
   judgement,
   labelMove,
@@ -173,6 +174,18 @@ describe('lostPercent', () => {
       undefined,
       undefined,
       undefined,
+    ]);
+  });
+});
+
+describe('finePercent', () => {
+  it('shows a tenth of a percent under 10%, and whole percents from there', () => {
+    expect([0.035, 0.0039, 0.0996, 0.1, 0.331].map(finePercent)).toEqual([
+      '3.5%',
+      '0.4%',
+      '10%',
+      '10%',
+      '33%',
     ]);
   });
 });

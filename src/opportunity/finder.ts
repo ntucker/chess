@@ -75,10 +75,7 @@ export interface Find {
   readonly gain: number;
   /** Set where the gain is an estimate: the cue is thin, or its measured replies cover under half. */
   readonly estimate?: true;
-  /**
-   * The share of games that reach the cue (`reachOf`) × gain: the expected
-   * score knowing the opportunity is worth per game.
-   */
+  /** `reach` × `share` × `gain` (`findScore`): the expected score knowing the opportunity is worth per game. */
   readonly score: number;
 }
 
@@ -180,13 +177,13 @@ export function findOpportunities({
     }
   }
   const reach = reachOf(opening.key, moves);
-  const sorted = [...finds]
-    .map(([cue, ways]): Find => {
+  const sorted = [...finds.values()]
+    .map((ways): Find => {
       // On the guide if the guide's moves alone lead to one of its mistakes.
       const onGuide = ways.some(({ from }) => reach(from, true) > 0);
       const games = (key: PositionKey) => reach(key, onGuide);
-      // A cue several mistakes lead to is one find, shown by the one most games
-      // play (on the guide, one the guide leads to).
+      // A cue several mistakes lead to is one find, shown and scored by the one
+      // most games play (on the guide, one the guide leads to).
       const played = ({ confirmed, from }: (typeof ways)[number]) => games(from) * confirmed.share;
       const { confirmed, from } = ways.reduce((most, way) =>
         played(way) > played(most) ? way : most,
@@ -195,7 +192,7 @@ export function findOpportunities({
         ...confirmed,
         reach: games(from),
         onGuide,
-        score: findScore(games(cue), confirmed.gain),
+        score: findScore(games(from), confirmed.share, confirmed.gain),
       };
     })
     .sort(byScore);
@@ -487,10 +484,12 @@ export function acceptedReplies(before: FinalAnalysis, after: FinalAnalysis, sid
 }
 
 /**
- * A find's score: the share of games that reach its cue × its gain in the
- * band, what knowing it is worth per game. The lesson's list ranks by it too.
+ * A find's score: the share of games that reach the position before its
+ * mistake × the mistake's share there × its gain in the band, what knowing it
+ * is worth per game. Only the move order its row shows counts, so the three
+ * numbers the row shows multiply to it. The lesson's list ranks by it too.
  */
-export const findScore = (cueReach: number, gain: number) => cueReach * gain;
+export const findScore = (reach: number, share: number, gain: number) => reach * share * gain;
 
 /**
  * Best first: the higher score (the unscored last), on a tie the more

@@ -7,8 +7,9 @@
 import type { Chess } from 'chessops/chess';
 import { parseUci } from 'chessops/util';
 
-import { keyTurn, parsePosition, playMove, positionKey, readPositionKey } from '@/game/replay';
+import { keyTurn, playMove, positionKey, readPositionKey } from '@/game/replay';
 import { findScore, type Move, rankBy, reachOf } from '@/opportunity/finder';
+import { type Node, walkTo } from '@/opportunity/walk';
 
 import type { Lesson, LessonMove, LessonPosition, PositionKey, Uci } from './lesson';
 import { guideOrder, type MarkedMove, markedMoves, mistakeLine } from './mistakes';
@@ -23,10 +24,13 @@ export interface Opportunity {
   readonly san: string;
   /** The cue: the position the mistake leads to. */
   readonly next: PositionKey;
-  /** Act I, then the mistake: the moves from the lesson's start (`guideLines`). */
+  /**
+   * Act I, then the mistake: the moves from the lesson's start, through the
+   * board's position the list is from (`guideLines`).
+   */
   readonly line: readonly Uci[];
   /**
-   * The share of the band's games from the lesson's start that reach `key`
+   * The share of the band's games from the board's position that reach `key`
    * while the learner plays the guide's moves (`reachOf`; `guideLines` says
    * how positions the band doesn't count weigh). Absent without a band.
    */
@@ -35,11 +39,12 @@ export interface Opportunity {
   readonly share?: number;
   /** The punishment ends in mate. */
   readonly mates: boolean;
+  /** What knowing the punishment is worth per game at the cue in the band (`Mistake.gain`), where measured. */
+  readonly gain?: number;
   /**
-   * The share of games that reach the cue × the mistake's gain in the band
-   * (`findScore`): what knowing it is worth per game. Absent where the gain
-   * isn't measured yet (a trap migrated from a guide) or the band has no
-   * counts for the mistake.
+   * `reach` × `share` × `gain` (`findScore`): what knowing it is worth per
+   * game. Absent where the gain isn't measured yet (a trap migrated from a
+   * guide) or the band has no counts for the mistake.
    */
   readonly score?: number;
 }
@@ -59,34 +64,62 @@ function markedMistakes(lesson: Lesson): readonly MarkedMove[] {
 }
 const marked = new WeakMap<Lesson, readonly MarkedMove[]>();
 
-/** The position `lesson` starts from, where every guide line begins. */
-const startKey = (lesson: Lesson) => positionKey(parsePosition(lesson.start)!);
+/** Where the guide's walk starts: the board's position and its key. */
+type WalkStart = Pick<Node, 'key' | 'pos'>;
+
+/** How many positions' lists and walks each lesson keeps: the board's and the few it steps between. */
+const KEPT = 16;
+
+/**
+ * `kept`'s value for `key`, made once and kept among the `KEPT` most recently
+ * asked for, so the positions the board steps back and forth between stay.
+ */
+function remember<T>(kept: Map<string, T>, key: string, make: () => T): T {
+  let value = kept.get(key);
+  // Asked for again: moved to the newest end, which a Map keeps in order of setting.
+  if (value !== undefined) kept.delete(key);
+  else value = make();
+  kept.set(key, value);
+  if (kept.size > KEPT) kept.delete(kept.keys().next().value!);
+  return value;
+}
 
 /**
  * The opportunities of `lesson` in `band` (an index into its rating bands,
- * none where it has no counts), the scored ones best first, then the
+ * none where it has no counts) still ahead of the board after `line`, the
+ * moves from the lesson's start: the scored ones best first, then the
  * unscored; ties go by reach, then by the line, as the finder ranks its finds
- * (`rankBy`). Only mistakes the guide's moves reach from the start are
- * listed, as the finder keeps only those on the guide for a lesson. Worked
- * out once per lesson and band.
+ * (`rankBy`). Only mistakes the guide's moves reach from the board's position
+ * are listed, as the finder keeps only those on the guide for a lesson, so
+ * reach rises as the line nears a mistake and one the line has passed drops
+ * out. Worked out once per lesson, band and position.
  */
 export function lessonOpportunities(
   lesson: Lesson,
   band: number | undefined,
+  line: readonly Uci[],
 ): readonly Opportunity[] {
-  let byBand = listed.get(lesson);
-  if (!byBand) listed.set(lesson, (byBand = new Map()));
-  let list = byBand.get(band);
-  if (!list) byBand.set(band, (list = rankOpportunities(lesson, band)));
-  return list;
+  let byLine = listed.get(lesson);
+  if (!byLine) listed.set(lesson, (byLine = new Map()));
+  return remember(byLine, `${band} ${line.join(' ')}`, () => {
+    // The board's moves are the game's, so they play.
+    const from = walkTo(lesson.start, line)!;
+    const ahead = rankOpportunities(lesson, band, from);
+    return ahead.map((row) => ({ ...row, line: [...line, ...row.line] }));
+  });
 }
-const listed = new WeakMap<Lesson, Map<number | undefined, readonly Opportunity[]>>();
+/** Each lesson's lists, by band and the board's line. */
+const listed = new WeakMap<Lesson, Map<string, readonly Opportunity[]>>();
 
-/** `lessonOpportunities`, worked out. */
-function rankOpportunities(lesson: Lesson, band: number | undefined): Opportunity[] {
+/** `lessonOpportunities` from `from`, worked out, with lines from there. */
+function rankOpportunities(
+  lesson: Lesson,
+  band: number | undefined,
+  from: WalkStart,
+): Opportunity[] {
   const mistakes = markedMistakes(lesson);
   if (!mistakes.length) return [];
-  const walk = guideLines(lesson, band, new Set(mistakes.map(({ key }) => key)));
+  const walk = guideLines(lesson, band, new Set(mistakes.map(({ key }) => key)), from);
   const reachAt = reachOf(walk.start, walk.moves);
   // Every move the walk takes is on the guide, so reach counts those alone.
   // Without a band there are no counts to reach by.
@@ -99,7 +132,7 @@ function rankOpportunities(lesson: Lesson, band: number | undefined): Opportunit
     const next = positionKey(after);
     const share = bandShare(lesson.positions[key], band)(move);
     const gain = band === undefined ? undefined : move.mistake?.gain?.[band];
-    const cueReach = onGuide(next);
+    const reach = onGuide(key);
     return [
       {
         key,
@@ -107,13 +140,14 @@ function rankOpportunities(lesson: Lesson, band: number | undefined): Opportunit
         san,
         next,
         line: [...into, move.uci],
-        reach: onGuide(key),
+        reach,
         share,
         mates: mates(lesson, key, move),
+        gain,
         score:
-          gain === undefined || share === undefined || cueReach === undefined
+          gain === undefined || share === undefined || reach === undefined
             ? undefined
-            : findScore(cueReach, gain),
+            : findScore(reach, share, gain),
       },
     ];
   });
@@ -133,15 +167,14 @@ interface GuideStep {
 }
 
 /**
- * The guide's moves from the lesson's start, level by level (each level the
- * moves one ply deeper): the moves the finder counts as on the guide, the
- * learner's by its choice rule (`guideOrder`) and every one of the opponent's.
- * Each position is walked on from once, at the depth it is first reached.
+ * The guide's moves from `start`, level by level (each level the moves one
+ * ply deeper): the moves the finder counts as on the guide, the learner's by
+ * its choice rule (`guideOrder`) and every one of the opponent's. Each
+ * position is walked on from once, at the depth it is first reached.
  */
-function* guideLevels(lesson: Lesson): Generator<readonly GuideStep[]> {
-  const startPos = parsePosition(lesson.start)!;
-  const seen = new Set([positionKey(startPos)]);
-  let level: (readonly [PositionKey, Chess])[] = [[positionKey(startPos), startPos]];
+function* guideLevels(lesson: Lesson, start: WalkStart): Generator<readonly GuideStep[]> {
+  const seen = new Set([start.key]);
+  let level: (readonly [PositionKey, Chess])[] = [[start.key, start.pos]];
   while (level.length) {
     const steps: GuideStep[] = [];
     const next: (readonly [PositionKey, Chess])[] = [];
@@ -167,12 +200,17 @@ function* guideLevels(lesson: Lesson): Generator<readonly GuideStep[]> {
 }
 
 /**
- * The guide's levels of `lesson` (`guideLevels`), walked once per lesson and
- * only as deep as a reader asks, so the list in each band shares one walk.
+ * The guide's levels of `lesson` from `start` (`guideLevels`), walked once per
+ * lesson and position and only as deep as a reader asks, so the list in each
+ * band shares one walk.
  */
-function* sharedLevels(lesson: Lesson): Generator<readonly GuideStep[]> {
-  let walk = walks.get(lesson);
-  if (!walk) walks.set(lesson, (walk = { levels: [], rest: guideLevels(lesson) }));
+function* sharedLevels(lesson: Lesson, start: WalkStart): Generator<readonly GuideStep[]> {
+  let byStart = walks.get(lesson);
+  if (!byStart) walks.set(lesson, (byStart = new Map()));
+  const walk = remember(byStart, start.key, () => ({
+    levels: [],
+    rest: guideLevels(lesson, start),
+  }));
   for (let depth = 0; ; depth++) {
     if (depth === walk.levels.length) {
       const next = walk.rest.next();
@@ -187,7 +225,7 @@ interface GuideWalk {
   readonly levels: (readonly GuideStep[])[];
   readonly rest: Generator<readonly GuideStep[]>;
 }
-const walks = new WeakMap<Lesson, GuideWalk>();
+const walks = new WeakMap<Lesson, Map<PositionKey, GuideWalk>>();
 
 /**
  * The guide's levels down to one past the deepest of `wanted` (so the moves
@@ -197,11 +235,12 @@ const walks = new WeakMap<Lesson, GuideWalk>();
 function levelsTo(
   lesson: Lesson,
   wanted: ReadonlySet<PositionKey>,
+  start: WalkStart,
 ): readonly (readonly GuideStep[])[] {
   const levels: (readonly GuideStep[])[] = [];
   const left = new Set(wanted);
-  left.delete(startKey(lesson));
-  for (const level of sharedLevels(lesson)) {
+  left.delete(start.key);
+  for (const level of sharedLevels(lesson, start)) {
     levels.push(level);
     if (!left.size) break;
     for (const { to } of level) left.delete(to);
@@ -217,8 +256,13 @@ function levelsTo(
  * explorer was asked), its guide moves take its games equally, so reach is
  * of the games that come that far.
  */
-function guideLines(lesson: Lesson, band: number | undefined, wanted: ReadonlySet<PositionKey>) {
-  const start = startKey(lesson);
+function guideLines(
+  lesson: Lesson,
+  band: number | undefined,
+  wanted: ReadonlySet<PositionKey>,
+  walkStart: WalkStart,
+) {
+  const start = walkStart.key;
   // Each position reached: how deep, how likely its likeliest fewest-move line, and that line's last step.
   const reached = new Map<
     PositionKey,
@@ -231,7 +275,7 @@ function guideLines(lesson: Lesson, band: number | undefined, wanted: ReadonlySe
     if (!share) shares.set(key, (share = walkShare(lesson.positions[key], band)));
     return share;
   };
-  levelsTo(lesson, wanted).forEach((level, i) => {
+  levelsTo(lesson, wanted, walkStart).forEach((level, i) => {
     const depth = i + 1;
     for (const { from, to, move, learner } of level) {
       const share = learner ? 1 : shareAt(from)(move);

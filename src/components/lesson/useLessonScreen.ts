@@ -425,6 +425,7 @@ export function useLessonScreen({
             // The file's own counts, which `withOpenings` drops where the openings are picked.
             lesson: picked,
             band: opponentBand(picked, opponent),
+            line: shownLine,
             progress,
             players: bandPlayers(picked, opponent),
             onPlay: (line) => dispatchGame({ type: 'newGame', moves: line }),

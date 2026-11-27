@@ -398,7 +398,8 @@ describe('findOpportunities', () => {
     expect(at(`${SETUP} Nc3`).key).toBe(at(SHARED).key);
     const shared = find(answers).finds.find((found) => found.mistake === last(SHARED));
     expect(shared).toMatchObject({ line: uci(QUIET), share: 0.2, reach: expect.closeTo(0.3) });
-    expect(shared!.score).toBeCloseTo((0.4 * 0.08 + 0.3 * 0.2) * shared!.gain);
+    // Scored by the move order it shows, so its row's numbers multiply to it.
+    expect(shared!.score).toBeCloseTo(0.3 * 0.2 * shared!.gain);
   });
 
   describe('Act III at the punishing side', () => {

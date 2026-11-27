@@ -1,6 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { MoveQuality } from '@/analysis/quality';
 import type { Square } from '@/board/drawing';
 import { lastPosition } from '@/game/replay';
 
@@ -11,11 +10,8 @@ import { type Pointer, preview } from './view';
 
 const SWITCHES: LessonSwitches = { auto: true, showMoves: true, showTraps: false };
 
-/**
- * The lesson's board after `sans`, with the learner pointing at `pointer`,
- * and the move just played labelled `quality`.
- */
-function board(sans: string[], pointer?: Pointer, quality?: MoveQuality) {
+/** The lesson's board after `sans`, with the learner pointing at `pointer`. */
+function board(sans: string[], pointer?: Pointer) {
   const view = sampleView(sans);
   const moves = uciLine(...sans);
   const shown = guidance({
@@ -25,7 +21,6 @@ function board(sans: string[], pointer?: Pointer, quality?: MoveQuality) {
     switches: SWITCHES,
     preview: pointer && preview(SAMPLE, view, pointer),
     lifted: pointer?.at === 'drag' ? pointer.from : undefined,
-    quality,
   });
   const input = {
     side: SAMPLE.side,
@@ -79,13 +74,18 @@ describe('lessonBoard', () => {
   });
 
   it("badges the last move's label, but not on a preview", () => {
-    expect(board(ADVANCE, undefined, 'best').board.drawings).toContainEqual({
+    const { input } = board(ADVANCE);
+    expect(lessonBoard({ ...input, quality: 'best' }).drawings).toContainEqual({
       kind: 'badge',
       square: 'e5',
       quality: 'best',
     });
-    const previewing = board(ADVANCE, { at: 'row', uci: 'c8f5' }, 'best').board;
-    expect(previewing.drawings?.some(({ kind }) => kind === 'badge')).toBe(false);
+    const previewing = board(ADVANCE, { at: 'row', uci: 'c8f5' }).input;
+    expect(
+      lessonBoard({ ...previewing, quality: 'best' }).drawings?.some(
+        ({ kind }) => kind === 'badge',
+      ),
+    ).toBe(false);
   });
 });
 
