@@ -64,6 +64,23 @@ function markedMistakes(lesson: Lesson): readonly MarkedMove[] {
 }
 const marked = new WeakMap<Lesson, readonly MarkedMove[]>();
 
+/** The cue of each of the other side's marked mistakes in `lesson`, wherever the board is. Read once per lesson. */
+export function markedCues(lesson: Lesson): ReadonlySet<PositionKey> {
+  let found = cues.get(lesson);
+  if (!found) {
+    found = new Set(
+      markedMistakes(lesson).map(({ key, move }) => {
+        const pos = readPositionKey(key)!;
+        pos.play(parseUci(move.uci)!); // checked lines (check.ts)
+        return positionKey(pos);
+      }),
+    );
+    cues.set(lesson, found);
+  }
+  return found;
+}
+const cues = new WeakMap<Lesson, ReadonlySet<PositionKey>>();
+
 /** Where the guide's walk starts: the board's position and its key. */
 type WalkStart = Pick<Node, 'key' | 'pos'>;
 

@@ -67,7 +67,7 @@ export interface Find {
   readonly guideReply?: Uci;
   /** Of the games `reach` counts, the share that play into the cue. */
   readonly share: number;
-  /** The expected score (0 to 1) the mistake gives away, from full searches; shown, not ranked. */
+  /** The expected score (0 to 1) the mistake gives away, from full searches: the mistake gate, carried into the lesson's mark; not ranked. */
   readonly cost: number;
   /** The share of games at the cue that play an accepted reply; absent where the cue is thin. */
   readonly found?: number;
@@ -176,23 +176,22 @@ export function findOpportunities({
       } else if (next.reach >= limits.reachFloor) frontier.push(next);
     }
   }
-  // The walk plays moves from positions up to `maxPlies` past the opening: that many and one more.
-  const reach = reachOf(opening.key, moves, limits.maxPlies + 1);
+  // The walk plays from positions up to `maxPlies` past the opening, so a cue can be a move further.
+  const reach = reachOf(opening.key, moves, limits.maxPlies);
+  const cueReach = reachOf(opening.key, moves, limits.maxPlies + 1);
   const setUps = new Map<PositionKey, PositionKey[]>();
   for (const { from, to, chosen } of moves) if (!chosen) append(setUps, to, from);
   const sorted = [...finds]
     .map(([cue, ways]): Find => {
       // On the guide if the guide's moves alone lead to one of its mistakes.
       const onGuide = ways.some(({ from }) => reach(from, true) > 0);
-      const games = (keys: PositionKey | readonly PositionKey[], within?: number) =>
-        reach(keys, onGuide, within);
+      const games = (keys: PositionKey | readonly PositionKey[]) => reach(keys, onGuide);
       // A cue several mistakes lead to is one find, shown by the one most games play.
       const played = ({ confirmed, from }: (typeof ways)[number]) => games(from) * confirmed.share;
       const { confirmed } = ways.reduce((most, way) => (played(way) > played(most) ? way : most));
       // Every way counts: the games set up to play into the cue, and of those, the share that do.
-      // Set up a ply sooner than the bound, so each game it counts can play into the cue within it.
-      const setUp = games(setUps.get(cue)!, limits.maxPlies);
-      const share = games(cue) / setUp;
+      const setUp = games(setUps.get(cue)!);
+      const share = cueReach(cue, onGuide) / setUp;
       return {
         ...confirmed,
         reach: setUp,
@@ -236,21 +235,26 @@ export interface Move {
  * again count their games once. A game counts where it first gets there, so
  * the start stays 1 and each game counts once. With `onGuide`, only guided
  * moves count (`Move.guided`). Given several positions, the share of games
- * that get to any of them, steering toward any; given `within`, within that
- * many moves rather than `plies`. Reach stays derived: nothing stores it.
+ * that get to any of them, steering toward any. Reach stays derived: nothing
+ * stores it.
  */
 export function reachOf(start: PositionKey, moves: readonly Move[], plies: number) {
-  const all = reachOver(start, movesByPly(start, moves, plies));
-  const guided = reachOver(
-    start,
-    movesByPly(
-      start,
-      moves.filter((move) => move.guided),
-      plies,
-    ),
-  );
-  return (keys: PositionKey | readonly PositionKey[], onGuide: boolean, within = plies) =>
-    (onGuide ? guided : all)(typeof keys === 'string' ? [keys] : keys, within);
+  // Each laid out by ply the first time it is asked for, since a lesson asks only on the guide.
+  let all: ReturnType<typeof reachOver> | undefined;
+  let guided: ReturnType<typeof reachOver> | undefined;
+  const over = (onGuide: boolean) =>
+    onGuide
+      ? (guided ??= reachOver(
+          start,
+          movesByPly(
+            start,
+            moves.filter((move) => move.guided),
+            plies,
+          ),
+        ))
+      : (all ??= reachOver(start, movesByPly(start, moves, plies)));
+  return (keys: PositionKey | readonly PositionKey[], onGuide: boolean) =>
+    over(onGuide)(typeof keys === 'string' ? [keys] : keys);
 }
 
 /** A move a game from the start can play after `ply` moves. */
@@ -262,11 +266,11 @@ interface PlyMove {
 /** The reach of each set of positions over `steps` (`movesByPly`), worked out the first time it is asked for. */
 function reachOver(start: PositionKey, steps: readonly PlyMove[]) {
   const known = new Map<string, number>();
-  return (targets: readonly PositionKey[], within: number) => {
-    const id = `${within} ${targets.join(' ')}`;
+  return (targets: readonly PositionKey[]) => {
+    const id = targets.join(' ');
     let reach = known.get(id);
     if (reach === undefined) {
-      reach = steeredReach(start, new Set(targets), within, steps);
+      reach = steeredReach(start, new Set(targets), steps);
       known.set(id, reach);
     }
     return reach;
@@ -276,7 +280,7 @@ function reachOver(start: PositionKey, steps: readonly PlyMove[]) {
 /**
  * The share of games that reach one of `targets` from `start` when the
  * punishing side steers toward them: dynamic programming worked back from the
- * targets (1 each, at every ply up to `within`) over `steps`, a position's value at each ply
+ * targets (1 each, at every ply) over `steps`, a position's value at each ply
  * from its moves' values one ply later, so read from the last ply back, each
  * value is complete before a move into it reads it. Each step is read once,
  * so the work grows with the moves times the plies each can be played at,
@@ -286,12 +290,11 @@ function reachOver(start: PositionKey, steps: readonly PlyMove[]) {
 function steeredReach(
   start: PositionKey,
   targets: ReadonlySet<PositionKey>,
-  within: number,
   steps: readonly PlyMove[],
 ): number {
   const byPly: Map<PositionKey, number>[] = [];
   const at = (key: PositionKey, ply: number) =>
-    targets.has(key) ? (ply <= within ? 1 : 0) : (byPly[ply]?.get(key) ?? 0);
+    targets.has(key) ? 1 : (byPly[ply]?.get(key) ?? 0);
   for (let i = steps.length - 1; i >= 0; i--) {
     const { move, ply } = steps[i];
     if (targets.has(move.from)) continue;
