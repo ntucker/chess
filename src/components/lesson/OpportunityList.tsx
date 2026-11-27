@@ -86,7 +86,7 @@ export interface FinderProps {
  * The lesson's opportunities (`lessonOpportunities`), best first, one row
  * each: its name over the mistake, or the mistake over the two moves
  * before it, then three meters: Arrive (how often the learner's games get
- * to the position the mistake is played in), Fall for it (how often the
+ * to the position the mistake is played in), Trapped (how often the
  * opponent then plays it) and Gain (what knowing the punishment adds to the
  * learner's winning chances each time). Its rank multiplies those three. A
  * row's progress mark leads it, as the move's row has it in the candidate
@@ -365,7 +365,7 @@ function sourceChip(source: ReplySource) {
 const listTip = (players: string | undefined) =>
   `The opponent's mistakes the guide marks that the board can still reach${
     players ? `, against ${players}` : ''
-  }, best first by arrive \u00d7 fall for it \u00d7 gain, which multiply to the winning chances knowing it adds per game. Those not measured yet come last, by how often your games arrive. Tap one to play up to your cue.`;
+  }, best first by arrive \u00d7 trapped \u00d7 gain, which multiply to the winning chances knowing it adds per game. Those not measured yet come last, by how often your games arrive. Tap one to play up to your cue.`;
 
 /** After a row's mistake, where its punishment mates (the gain column's tip says so). */
 const MATE_MARK = '#';
@@ -378,14 +378,14 @@ const COLUMNS = [
     tip: "Arrive: how often your games get from the board's position to the one where the opponent can make the mistake. \u2013 means no games counted.",
   },
   {
-    meter: 'fall',
+    meter: 'trapped',
     icon: 'fish-outline',
-    tip: 'Fall for it: once your game arrives, how often the opponent plays the mistake. \u2013 means no count for this move.',
+    tip: 'Trapped: once your game arrives, how often the opponent walks into the trap by playing the mistake. \u2013 means no count for this move.',
   },
   {
     meter: 'gain',
     icon: 'trophy-outline',
-    tip: `Gain: each time the opponent falls for it, the winning chances you add by knowing the punishment, rather than playing what most players at your level play. \u2013 means it isn't measured yet; ${MATE_MARK} beside a move, the punishment mates.`,
+    tip: `Gain: each time the opponent is trapped, the winning chances you add by knowing the punishment, rather than playing what most players at your level play. \u2013 means it isn't measured yet; ${MATE_MARK} beside a move, the punishment mates.`,
   },
 ] as const;
 type Meter = (typeof COLUMNS)[number]['meter'];
@@ -507,7 +507,7 @@ function Row({
   // Each meter's number and how full its bar is, in its column (`COLUMNS`).
   const meters: Record<Meter, { label: string; fill: number }> = {
     arrive: { label: reach === undefined ? '–' : finePercent(reach), fill: reach ?? 0 },
-    fall: { label: share === undefined ? '–' : finePercent(share), fill: share ?? 0 },
+    trapped: { label: share === undefined ? '–' : finePercent(share), fill: share ?? 0 },
     // Always the learner's gain, so a plus: never read as what they lose.
     gain: {
       label: gain === undefined ? '–' : `+${finePercent(gain)}`,
@@ -522,7 +522,7 @@ function Row({
           name ?? mistake,
           caption,
           reach !== undefined && `arrives in ${finePercent(reach)} of games`,
-          share !== undefined && `falls for it ${finePercent(share)} of the time`,
+          share !== undefined && `trapped ${finePercent(share)} of the time`,
           gain !== undefined && `knowing it gains ${finePercent(gain)}`,
           mates && 'punished with mate',
           mark && SPOKEN_MARKS[mark],
