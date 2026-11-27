@@ -55,10 +55,7 @@ export interface Find {
   readonly end: number;
   /** Whether the cue's best reply alone keeps the learner clearly better, against best defence. */
   readonly holds: boolean;
-  /**
-   * The share of games that reach a position the cue is a move from, the
-   * mistake's or another's (`reachOf`): where the trap is set up.
-   */
+  /** The share of games set up to play into the cue: at a position one move from it (`reachOf`). */
   readonly reach: number;
   /**
    * Whether the guide's moves alone lead the punishing side here. Only such
@@ -68,10 +65,7 @@ export interface Find {
   readonly onGuide: boolean;
   /** The guide's move at the cue where the cue doesn't accept it (`acceptedReplies`): a person looks at it. */
   readonly guideReply?: Uci;
-  /**
-   * Of the games `reach` counts, the share that play into the cue: the
-   * mistake's share of the games at its position where it is the only way in.
-   */
+  /** Of the games `reach` counts, the share that play into the cue. */
   readonly share: number;
   /** The expected score (0 to 1) the mistake gives away, from full searches; shown, not ranked. */
   readonly cost: number;
@@ -127,8 +121,7 @@ export interface FinderResult {
  * and the walk goes on past it. The walk stops where the game is over, at
  * thin positions, below the reach floor and past the ply cap; a position
  * reached again is not walked again, though its reach counts every way in
- * (`reachOf`), and a cue several mistakes lead to is one find, counting
- * every way in.
+ * (`reachOf`), and a cue several mistakes lead to is one find.
  */
 export function findOpportunities({
   start,
@@ -307,8 +300,8 @@ function movesInOrder(start: PositionKey, moves: readonly Move[]): Move[] {
   for (const move of moves) append(out, move.from, move);
   const onTheWay = new Set<PositionKey>();
   const done = new Set<PositionKey>();
-  // Each position's moves, kept once every position they lead to is done: so last-done first.
-  const finished: Move[][] = [];
+  // Each position's moves, added once every position they lead to is done, so read backwards.
+  const finished: Move[] = [];
   const visit = (key: PositionKey) => {
     onTheWay.add(key);
     const kept: Move[] = [];
@@ -319,10 +312,10 @@ function movesInOrder(start: PositionKey, moves: readonly Move[]): Move[] {
     }
     onTheWay.delete(key);
     done.add(key);
-    finished.push(kept);
+    finished.push(...kept);
   };
   visit(start);
-  return finished.reverse().flat();
+  return finished.reverse();
 }
 
 /** Adds `value` to `map`'s list at `key`, starting the list where there is none. */
@@ -512,10 +505,10 @@ export function acceptedReplies(before: FinalAnalysis, after: FinalAnalysis, sid
 }
 
 /**
- * A find's score: the share of games that reach the position before its
- * mistake × the mistake's share there × its gain in the band, what knowing it
- * is worth per game. Only the move order its row shows counts, so the three
- * numbers the row shows multiply to it. The lesson's list ranks by it too.
+ * A find's score: the share of games set up for its trap (by every move
+ * order) × the share of those that walk into it × its gain in the band, what
+ * knowing it is worth per game. The three numbers its row shows multiply to
+ * it. The lesson's list ranks by it too.
  */
 export const findScore = (reach: number, share: number, gain: number) => reach * share * gain;
 
