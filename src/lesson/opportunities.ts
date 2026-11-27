@@ -120,7 +120,7 @@ function rankOpportunities(
   const mistakes = markedMistakes(lesson);
   if (!mistakes.length) return [];
   const walk = guideLines(lesson, band, new Set(mistakes.map(({ key }) => key)), from);
-  const reachAt = reachOf(walk.start, walk.moves);
+  const reachAt = reachOf(walk.start, walk.moves, walk.plies);
   // Every move the walk takes is on the guide, so reach counts those alone.
   // Without a band there are no counts to reach by.
   const onGuide = (key: PositionKey) => (band === undefined ? undefined : reachAt(key, true));
@@ -275,7 +275,8 @@ function guideLines(
     if (!share) shares.set(key, (share = walkShare(lesson.positions[key], band)));
     return share;
   };
-  levelsTo(lesson, wanted, walkStart).forEach((level, i) => {
+  const levels = levelsTo(lesson, wanted, walkStart);
+  levels.forEach((level, i) => {
     const depth = i + 1;
     for (const { from, to, move, learner } of level) {
       const share = learner ? 1 : shareAt(from)(move);
@@ -287,7 +288,7 @@ function guideLines(
       }
     }
   });
-  return { start, moves, lines: linesInto(reached, wanted) };
+  return { start, moves, plies: levels.length, lines: linesInto(reached, wanted) };
 }
 
 /**

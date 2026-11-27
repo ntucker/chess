@@ -176,7 +176,7 @@ export function findOpportunities({
       } else if (next.reach >= limits.reachFloor) frontier.push(next);
     }
   }
-  const reach = reachOf(opening.key, moves);
+  const reach = reachOf(opening.key, moves, limits.maxPlies + 1);
   const setUps = new Map<PositionKey, PositionKey[]>();
   for (const { from, to, chosen } of moves) if (!chosen) append(setUps, to, from);
   const sorted = [...finds]
@@ -225,38 +225,45 @@ export interface Move {
 }
 
 /**
- * Each walked position's reach: the share of games that get there when the
- * punishing side steers toward it. Every move order counts: erring-side
- * replies add up, weighted by share, so the games of two move orders that
- * meet (a transposition) add up, while the punishing side plays whichever of
- * its moves gets there most, so two book moves that meet again count their
- * games once. A move back to a position already on the way (a repetition)
- * counts for nothing, so the start stays 1 and each game counts once. With
- * `onGuide`, only guided moves count (`Move.guided`). Given several
- * positions, the share of games that get to any of them, steering toward
- * any. Reach stays derived: nothing stores it.
+ * Each walked position's reach: the share of games that get there within
+ * `plies` moves when the punishing side steers toward it. Every move order
+ * counts: erring-side replies add up, weighted by share, so the games of two
+ * move orders that meet (a transposition) add up, while the punishing side
+ * plays whichever of its moves gets there most, so two book moves that meet
+ * again count their games once. A game counts where it first gets there, so
+ * the start stays 1 and each game counts once. With `onGuide`, only guided
+ * moves count (`Move.guided`). Given several positions, the share of games
+ * that get to any of them, steering toward any. Reach stays derived: nothing
+ * stores it.
  */
-export function reachOf(start: PositionKey, moves: readonly Move[]) {
-  const all = reachOver(start, movesInOrder(start, moves));
+export function reachOf(start: PositionKey, moves: readonly Move[], plies: number) {
+  const all = reachOver(start, movesByPly(start, moves, plies));
   const guided = reachOver(
     start,
-    movesInOrder(
+    movesByPly(
       start,
       moves.filter((move) => move.guided),
+      plies,
     ),
   );
   return (keys: PositionKey | readonly PositionKey[], onGuide: boolean) =>
     (onGuide ? guided : all)(typeof keys === 'string' ? [keys] : keys);
 }
 
-/** The reach of each set of positions over `ordered` (`movesInOrder`), worked out the first time it is asked for. */
-function reachOver(start: PositionKey, ordered: readonly Move[]) {
+/** A move a game from the start can play after `ply` moves. */
+interface PlyMove {
+  readonly move: Move;
+  readonly ply: number;
+}
+
+/** The reach of each set of positions over `steps` (`movesByPly`), worked out the first time it is asked for. */
+function reachOver(start: PositionKey, steps: readonly PlyMove[]) {
   const known = new Map<string, number>();
   return (targets: readonly PositionKey[]) => {
     const id = targets.join(' ');
     let reach = known.get(id);
     if (reach === undefined) {
-      reach = steeredReach(start, new Set(targets), ordered);
+      reach = steeredReach(start, new Set(targets), steps);
       known.set(id, reach);
     }
     return reach;
@@ -266,56 +273,54 @@ function reachOver(start: PositionKey, ordered: readonly Move[]) {
 /**
  * The share of games that reach one of `targets` from `start` when the
  * punishing side steers toward them: dynamic programming worked back from the
- * targets (1 each) over `ordered`, where every move into a position comes
- * before every move out of it, so read backwards, each position's value is
- * complete before any move into it reads it. Each move is read once, so the
- * work grows with the moves, not with the move orders. A game that reaches a
- * target is counted there, so moves out of a target are not read.
+ * targets (1 each, at every ply) over `steps`, a position's value at each ply
+ * from its moves' values one ply later, so read from the last ply back, each
+ * value is complete before a move into it reads it. Each step is read once,
+ * so the work grows with the moves, not with the move orders. A game that
+ * reaches a target is counted there, so moves out of a target are not read.
  */
 function steeredReach(
   start: PositionKey,
   targets: ReadonlySet<PositionKey>,
-  ordered: readonly Move[],
+  steps: readonly PlyMove[],
 ): number {
-  const reach = new Map([...targets].map((target) => [target, 1]));
-  for (let i = ordered.length - 1; i >= 0; i--) {
-    const move = ordered[i];
+  const reach: Map<PositionKey, number>[] = [];
+  const at = (key: PositionKey, ply: number) =>
+    targets.has(key) ? 1 : (reach[ply]?.get(key) ?? 0);
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const { move, ply } = steps[i];
     if (targets.has(move.from)) continue;
-    const through = (reach.get(move.to) ?? 0) * move.share;
+    const through = at(move.to, ply + 1) * move.share;
     if (!through) continue;
-    const before = reach.get(move.from) ?? 0;
-    reach.set(move.from, move.chosen ? Math.max(before, through) : before + through);
+    const values = (reach[ply] ??= new Map());
+    const before = values.get(move.from) ?? 0;
+    values.set(move.from, move.chosen ? Math.max(before, through) : before + through);
   }
-  return reach.get(start) ?? 0;
+  return at(start, 0);
 }
 
 /**
- * The moves reachable from `start`, each position's moves out after every
- * move into it (a topological order, from a depth-first walk), leaving out
- * each move back to a position the walk is still on the way from, which
- * would close a circle.
+ * The moves a game from `start` can play within `plies` moves, each with the
+ * ply it is played at, ply by ply. A position reached at several plies has
+ * its moves at each, so a move order that goes round a circle still counts
+ * where it leads somewhere new.
  */
-function movesInOrder(start: PositionKey, moves: readonly Move[]): Move[] {
+function movesByPly(start: PositionKey, moves: readonly Move[], plies: number): PlyMove[] {
   const out = new Map<PositionKey, Move[]>();
   for (const move of moves) append(out, move.from, move);
-  const onTheWay = new Set<PositionKey>();
-  const done = new Set<PositionKey>();
-  // Each position's moves, added once every position they lead to is done, so read backwards.
-  const finished: Move[] = [];
-  const visit = (key: PositionKey) => {
-    onTheWay.add(key);
-    const kept: Move[] = [];
-    for (const move of out.get(key) ?? []) {
-      if (onTheWay.has(move.to)) continue;
-      kept.push(move);
-      if (!done.has(move.to)) visit(move.to);
+  const steps: PlyMove[] = [];
+  let level = new Set([start]);
+  for (let ply = 0; ply < plies && level.size; ply++) {
+    const next = new Set<PositionKey>();
+    for (const key of level) {
+      for (const move of out.get(key) ?? []) {
+        steps.push({ move, ply });
+        next.add(move.to);
+      }
     }
-    onTheWay.delete(key);
-    done.add(key);
-    finished.push(...kept);
-  };
-  visit(start);
-  return finished.reverse();
+    level = next;
+  }
+  return steps;
 }
 
 /** Adds `value` to `map`'s list at `key`, starting the list where there is none. */
