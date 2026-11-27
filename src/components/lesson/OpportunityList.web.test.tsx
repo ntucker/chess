@@ -163,14 +163,14 @@ describe('OpportunityList', () => {
     expect(said).toHaveLength(ranked.length);
     const bg5 = said.find((label) => label?.includes('6.Bg5'));
     expect(bg5).toMatch(
-      /^6\.Bg5, after 5\.d3 Bc5, arrives in 3\.9% of games, trapped 15% of the time, knowing it gains 13%, punished with mate$/,
+      /^6\.Bg5, after 5\.d3 Bc5, set up in 3\.9% of games, trapped 15% of the time, knowing it gains 13%, punished with mate$/,
     );
   });
 
   it("names each meter's column in its tooltip, over rows only", () => {
     const columns = [
-      'Arrive: how often',
-      'Trapped: once your game arrives',
+      'Set up: how often',
+      'Trapped: once the trap is set up',
       'Gain: each time the opponent is trapped',
     ];
     const shown = text({});
@@ -230,7 +230,7 @@ describe('OpportunityList', () => {
     });
     expect(said).toHaveLength(ranked.length + 2);
     expect(said.at(-2)).toMatch(
-      /^7\.\.\.Bg4, after 6\.\.\.Qd4 7\.O-O, arrives in 12% of games, trapped 10% of the time, knowing it gains 12%$/,
+      /^7\.\.\.Bg4, after 6\.\.\.Qd4 7\.O-O, set up in 12% of games, trapped 10% of the time, knowing it gains 12%$/,
     );
     expect(said.at(-1)).toMatch(/^3\.\.\.Nf6, after 2\.\.\.Nc6 3\.Qh5, .*, punished with mate$/);
     expect(onPlay).toHaveBeenCalledWith([...FIND.line, FIND.mistake]);
@@ -254,7 +254,7 @@ describe('OpportunityList', () => {
     expect(labels({ ...past, saved })).toHaveLength(ahead);
     // Off the guide, nothing is left to list: no rows, so no column heads.
     const offGuide = text({ line: uciLine('d4'), finder, saved });
-    expect(offGuide).not.toContain('Arrive: how often');
+    expect(offGuide).not.toContain('Set up: how often');
   });
 
   it('leaves out a find that reaches a listed position by another order of moves', () => {
