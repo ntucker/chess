@@ -462,6 +462,15 @@ comes after):
   Gambit's 10...Ne4 (cost 0.054, gain 0.094 at 1400, reached in 9% of games). The checker's floor
   applies to marks without a study verdict, the finder's.
 
+Gate before the second part (Nathaniel, 2026-11-27): the definition of a trap and an opportunity is
+reworked before the finder runs on every lesson. The second part, which scores every lesson, waits
+until Nathaniel decides that the definition works well. The work tests today's definition
+against real finds and measured study traps. Today's definition is the Rules above: a reply played
+5% or more that costs at least `MISTAKE_LOSS`, a gain of at least `minGain`, and an Act III that
+ends at `keepScore` or better, with study traps exempt from the cost floor. The work proposes
+changes with side-by-side examples, and updates Rules and `limits.ts` to the definition he
+approves.
+
 ### Piece G: List page
 
 Opportunities for the lesson and the band, ranked by score (a migrated trap without a gain yet lists
