@@ -192,7 +192,7 @@ describe('OpportunityList', () => {
     expect(text({ lesson: antiLondon, finder: found })).toContain(columns[0]);
   });
 
-  it('shows and says what knowing a row is worth, a dash where not measured', () => {
+  it('shows and says what knowing a row gains, a dash where not measured', () => {
     const worth = (props: Partial<Props>) =>
       render(props, (host) => rowsIn(host).at(-1)!.textContent);
     expect(worth(foundAt(0.17))).toMatch(/\+17%$/);

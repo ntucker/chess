@@ -85,9 +85,10 @@ export interface FinderProps {
 /**
  * The lesson's opportunities (`lessonOpportunities`), best first, one row
  * each: its name over the mistake, or the mistake over the two moves
- * before it, then three meters: how often games reach it, how often the
- * opponent plays the mistake there, and what knowing the punishment adds to
- * the learner's winning chances there. Its rank multiplies those three. A
+ * before it, then three meters: Arrive (how often the learner's games get
+ * to the position the mistake is played in), Fall for it (how often the
+ * opponent then plays it) and Gain (what knowing the punishment adds to the
+ * learner's winning chances each time). Its rank multiplies those three. A
  * row's progress mark leads it, as the move's row has it in the candidate
  * list. Pressing a row plays Act I and hands the learner the board at the
  * cue. After them, the finder's (`FinderPart`): run from the board's
@@ -364,7 +365,7 @@ function sourceChip(source: ReplySource) {
 const listTip = (players: string | undefined) =>
   `The opponent's mistakes the guide marks that the board can still reach${
     players ? `, against ${players}` : ''
-  }, best first by the three columns multiplied: arrive \u00d7 fall for it \u00d7 gain, the extra points knowing it wins you per game. Those not measured yet come last, by how often your games arrive. Tap one to play up to your cue.`;
+  }, best first by arrive \u00d7 fall for it \u00d7 gain, which multiply to the winning chances knowing it adds per game. Those not measured yet come last, by how often your games arrive. Tap one to play up to your cue.`;
 
 /** After a row's mistake, where its punishment mates (the gain column's tip says so). */
 const MATE_MARK = '#';
@@ -372,19 +373,19 @@ const MATE_MARK = '#';
 /** The rows' three meters, left to right: each column's icon, and what it shows in its tooltip. */
 const COLUMNS = [
   {
-    meter: 'reach',
+    meter: 'arrive',
     icon: 'footsteps-outline',
     tip: "Arrive: how often your games get from the board's position to the one where the opponent can make the mistake. \u2013 means no games counted.",
   },
   {
-    meter: 'share',
+    meter: 'fall',
     icon: 'fish-outline',
     tip: 'Fall for it: once your game arrives, how often the opponent plays the mistake. \u2013 means no count for this move.',
   },
   {
     meter: 'gain',
     icon: 'trophy-outline',
-    tip: `Gain: each time the opponent falls for it, the extra winning chances (points out of 100) you get by knowing the punishment, rather than playing what most players at your level play. \u2013 means it isn't measured yet; ${MATE_MARK} beside a move, the punishment mates.`,
+    tip: `Gain: each time the opponent falls for it, the winning chances you add by knowing the punishment, rather than playing what most players at your level play. \u2013 means it isn't measured yet; ${MATE_MARK} beside a move, the punishment mates.`,
   },
 ] as const;
 type Meter = (typeof COLUMNS)[number]['meter'];
@@ -505,8 +506,8 @@ function Row({
   const caption = name ? mistake : leadIn(line);
   // Each meter's number and how full its bar is, in its column (`COLUMNS`).
   const meters: Record<Meter, { label: string; fill: number }> = {
-    reach: { label: reach === undefined ? '–' : finePercent(reach), fill: reach ?? 0 },
-    share: { label: share === undefined ? '–' : finePercent(share), fill: share ?? 0 },
+    arrive: { label: reach === undefined ? '–' : finePercent(reach), fill: reach ?? 0 },
+    fall: { label: share === undefined ? '–' : finePercent(share), fill: share ?? 0 },
     // Always the learner's gain, so a plus: never read as what they lose.
     gain: {
       label: gain === undefined ? '–' : `+${finePercent(gain)}`,
@@ -651,8 +652,9 @@ function densityStyles(
 }
 type Styles = ReturnType<typeof densityStyles>;
 
-// A phone's rows run to the page's edge; a card's keep inside it.
-const COMPACT = densityStyles(32, { minHeight: 44 }, { inset: 0, bookmarkInset: 0, edge: 0 });
+// A phone's rows run to the page's edge; a card's keep inside it. A meter fits
+// its widest label on one line: a gain under 10%, such as "+7.0%".
+const COMPACT = densityStyles(40, { minHeight: 44 }, { inset: 0, bookmarkInset: 0, edge: 0 });
 const COMFORTABLE = densityStyles(
   44,
   { paddingVertical: 8 },
