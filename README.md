@@ -108,3 +108,5 @@ To work on this repo through a Claude project on claude.ai:
    ```
 
 4. For Android checks, link your computer to the project.
+
+Use the Staff Reviewer bot template [to run your own fork with autoland](https://x.ai/bot/qxiHkZRVsbD_Xo7-Faxxi).
