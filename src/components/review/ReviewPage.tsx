@@ -101,6 +101,7 @@ function ReviewScreen({
   const { place, eyebrow } = reviewNames(picked?.title);
   return (
     <Stage
+      paged
       title={TITLE}
       header={{ place, back: back(lesson) }}
       board={

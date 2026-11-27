@@ -78,6 +78,8 @@ export const NARROW_PARTS = [
   'board-column',
   'program',
   'footed-program',
+  'paged-program',
+  'footed-paged-program',
   'player-names',
   'pages-panel',
 ] as const;
@@ -93,9 +95,20 @@ export type NarrowPartName = (typeof NARROW_PARTS)[number];
 export const SCROLLING_PARTS = [
   'program',
   'footed-program',
+  'paged-program',
+  'footed-paged-program',
 ] as const satisfies readonly NarrowPartName[];
 
 export type ScrollingPart = (typeof SCROLLING_PARTS)[number];
+
+/**
+ * The scrolling parts holding a phone's pages (`PhonePages`), whose panes fade
+ * their own feet: the panel doesn't fade too, so the page dots sit at its foot.
+ */
+export const PAGED_PARTS = [
+  'paged-program',
+  'footed-paged-program',
+] as const satisfies readonly ScrollingPart[];
 
 /**
  * A length that is shorter on a narrow page, or a sum of such lengths. Work
@@ -219,6 +232,12 @@ const PROGRAM = {
   width: '100%',
 } as const satisfies ViewStyle;
 
+const PROGRAM_PART = { ...PROGRAM, minHeight: PROGRAM_FLOOR } as const satisfies ViewStyle;
+const FOOTED_PROGRAM_PART = {
+  ...PROGRAM,
+  minHeight: PROGRAM_FLOOR - NARROW_PX['program-foot'],
+} as const satisfies ViewStyle;
+
 /**
  * narrow.css's rules as native styles. narrow.test.ts checks each declaration
  * is in the part's rule there (`wide` in the rules outside the media query),
@@ -248,11 +267,11 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
     },
   },
   'board-column': { narrow: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: '100%' } },
-  program: { narrow: { ...PROGRAM, minHeight: PROGRAM_FLOOR } },
+  program: { narrow: PROGRAM_PART },
   // The controls under it take the rest of the floor, so they fit any window a page without them does.
-  'footed-program': {
-    narrow: { ...PROGRAM, minHeight: PROGRAM_FLOOR - NARROW_PX['program-foot'] },
-  },
+  'footed-program': { narrow: FOOTED_PROGRAM_PART },
+  'paged-program': { narrow: PROGRAM_PART },
+  'footed-paged-program': { narrow: FOOTED_PROGRAM_PART },
   'player-names': { narrow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 } },
   'pages-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
 };
@@ -261,10 +280,11 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
  * What narrow.css does to a part that scrolls on its own: `NarrowScroll` does
  * it natively, where a scroll view pans only along its axis already.
  */
-const SCROLLS = [
-  'overflow-x: hidden',
-  'overflow-y: auto',
-  'touch-action: pan-y pinch-zoom',
+const SCROLLS = ['overflow-x: hidden', 'overflow-y: auto', 'touch-action: pan-y pinch-zoom'];
+
+/** What narrow.css adds to a scrolling part that fades its foot: `NarrowScroll` fades its edge natively. */
+const FADES = [
+  ...SCROLLS,
   'padding-bottom: var(--fade)',
   'mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent)',
 ];
@@ -286,6 +306,9 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   // program; a percentage there adds the fade's padding again, so the panel scrolled by it.
   'pages-panel': ['min-height: 100%'],
   // `NarrowScroll` scrolls these natively, with a fading edge and the same padding.
-  program: SCROLLS,
-  'footed-program': SCROLLS,
+  program: FADES,
+  'footed-program': FADES,
+  // And these, with neither.
+  'paged-program': SCROLLS,
+  'footed-paged-program': SCROLLS,
 };

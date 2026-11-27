@@ -73,17 +73,17 @@ export function PhonePages<H extends string>({
           <ScoresheetPage {...scoresheet} />
         </Pager.Page>
         {/* Over the panes' faded foot (`FadingScroll`), so a page a swipe away shows it's there. */}
-        <Pager.Indicator testID="page-dots" />
+        <Pager.Indicator testID="page-dots" style={styles.dots} />
       </Pager.Root>
     </Stack>
   );
 }
 
 /**
- * The steps of space the dots take at the pages' foot: silk's indicator sits
- * a step up and is a step tall, and a third step clears it.
+ * The steps of space the dots take at the pages' foot: they sit on it
+ * (`styles.dots`) a step tall, and a second step clears them.
  */
-const DOTS_STEPS = 3;
+const DOTS_STEPS = 2;
 
 /** The pages' least height: a few lines. Below it the panel scrolls instead. */
 const PAGES_FLOOR = 140;
@@ -94,4 +94,6 @@ const styles = StyleSheet.create({
   pages: { flexGrow: 1, flexShrink: 1, minHeight: PAGES_FLOOR, height: PAGES_FLOOR },
   // A page takes the pages' height and no more, so what it holds scrolls within.
   page: { flexGrow: 1, flexShrink: 1, minHeight: 0 },
+  // On the panel's foot, which the page's margin already holds off the screen's edge.
+  dots: { bottom: 0 },
 });

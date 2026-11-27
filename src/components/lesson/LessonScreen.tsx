@@ -176,6 +176,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
 
   return (
     <Stage
+      paged
       title={model.title}
       header={{
         ...model.header,

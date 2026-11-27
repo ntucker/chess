@@ -34,7 +34,7 @@ import type { EvaluationEngine } from '@/evaluation/evaluation';
 import { type Color, colorName, lastStep, opposite } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 import type { Game } from '@/game/useGame';
-import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { narrowLength, narrowStyles, type ScrollingPart } from '@/theme/narrow';
 import {
   NarrowOnly,
   NarrowScroll,
@@ -57,6 +57,8 @@ interface StageProps {
   readonly footer?: ReactNode;
   /** On a narrow page, controls fixed under the panel at the screen's foot, such as the review's actions. */
   readonly programFoot?: ReactNode;
+  /** Whether a phone's panel holds pages (`PhonePages`), which fade their own feet, so it doesn't. */
+  readonly paged?: boolean;
 }
 
 /**
@@ -65,7 +67,15 @@ interface StageProps {
  * way. On a narrow page the panel goes below the board and scrolls on its
  * own, so the board stays in view.
  */
-export function Stage({ title, header, board, program, footer, programFoot }: StageProps) {
+export function Stage({
+  title,
+  header,
+  board,
+  program,
+  footer,
+  programFoot,
+  paged = false,
+}: StageProps) {
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
   const foot = Boolean(programFoot);
@@ -82,7 +92,7 @@ export function Stage({ title, header, board, program, footer, programFoot }: St
         >
           {board}
         </View>
-        <NarrowScroll part={foot ? 'footed-program' : 'program'} style={styles.program}>
+        <NarrowScroll part={PROGRAM_PARTS[`${paged}`][`${foot}`]} style={styles.program}>
           {program}
         </NarrowScroll>
         {programFoot ? <NarrowOnly style={styles.programFoot}>{programFoot}</NarrowOnly> : null}
@@ -90,6 +100,12 @@ export function Stage({ title, header, board, program, footer, programFoot }: St
     </Page>
   );
 }
+
+/** The panel's part: by whether it holds pages, then whether controls are fixed under it. */
+const PROGRAM_PARTS = {
+  false: { false: 'program', true: 'footed-program' },
+  true: { false: 'paged-program', true: 'footed-paged-program' },
+} as const satisfies Record<`${boolean}`, Record<`${boolean}`, ScrollingPart>>;
 
 /** What the board column shows of a game: its moves, the one on the board, and whose turn it is. */
 export type BoardGame = Pick<

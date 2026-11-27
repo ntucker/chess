@@ -127,7 +127,7 @@ describe('PhoneLesson', () => {
 
   it("ends the scoresheet's page above the dots, as its table doesn't fade at its foot", () => {
     render('scoresheet');
-    expect(pageOf('scoresheet').style.paddingBottom).toBe('24px');
+    expect(pageOf('scoresheet').style.paddingBottom).toBe('16px');
     expect(pageOf('movesidea').style.paddingBottom).toBe('');
   });
 
