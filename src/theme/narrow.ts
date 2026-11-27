@@ -257,9 +257,14 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'pages-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
 };
 
-/** What narrow.css does to a part that scrolls on its own: `NarrowScroll` does it natively. */
+/**
+ * What narrow.css does to a part that scrolls on its own: `NarrowScroll` does
+ * it natively, where a scroll view pans only along its axis already.
+ */
 const SCROLLS = [
+  'overflow-x: hidden',
   'overflow-y: auto',
+  'touch-action: pan-y pinch-zoom',
   'padding-bottom: var(--fade)',
   'mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent)',
 ];
