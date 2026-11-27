@@ -110,7 +110,9 @@ function serve() {
 function measure({ board, frame }) {
   const box = (selector) => document.querySelector(selector)?.getBoundingClientRect().toJSON();
   const part = (name) => `[data-narrow='${name}']`;
-  const program = document.querySelector(`${part('program')}, ${part('footed-program')}`);
+  const program = document.querySelector(
+    ['program', 'footed-program', 'paged-program', 'footed-paged-program'].map(part).join(', '),
+  );
   const overflow = (element) => getComputedStyle(element).overflowY;
   const frameView = document.querySelector(frame);
   const frameStyle = frameView && getComputedStyle(frameView);
