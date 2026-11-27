@@ -20,7 +20,11 @@ export interface Settings {
   readonly evaluationEngine: EvaluationEngine;
   /** In a lesson, the opponent replies by itself (auto play); off, the learner picks its move. */
   readonly auto: boolean;
-  /** In a lesson's Explore, the next moves' arrows and Stockfish's best are drawn before the learner points at one. */
+  /**
+   * In a lesson's Explore, the next moves' arrows and Stockfish's best are
+   * drawn before the learner points at one, and the move just played's label
+   * is badged on its piece.
+   */
   readonly showMoves: boolean;
   /** In a lesson, a trap's moves are drawn before the learner can fall in. */
   readonly showTraps: boolean;
