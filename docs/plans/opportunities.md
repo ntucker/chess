@@ -28,8 +28,8 @@ plan doesn't depend on those links.
 - Traps and opportunities are one shape. "Show traps" stays a pure display setting: it only filters
   in `src/lesson/guidance.ts` and never shapes, drops or gates loaded data. Off, it hides only the
   traps the learner's side can fall into, so opportunities stay shown.
-- An opportunity is ranked by what knowing it is worth, not by how bad the mistake is: score = games
-  reaching the cue × gain if known (Rules). This replaces the product plan's "how often × how bad ×
+- An opportunity is ranked by what knowing it is worth, not by how bad the mistake is: score = set up ×
+  trapped × gain if known (Rules), which is games reaching the cue × gain. This replaces the product plan's "how often × how bad ×
   reach", agreed by Nathaniel 2026-11-24 after the Stafford report ranked recaptures everyone finds
   (6.Bxd5 Qxd5, played by 100%) above finds whose natural reply is the wrong one (5.Nxf7, where 76%
   recapture and 8% find 5...Qe7). A find is kept only where Act III leaves the learner clearly
@@ -124,18 +124,21 @@ lichess host's `repliesFrom`. The cost floor is `MISTAKE_LOSS` (`quality.ts`), t
 limit, and is not a gate setting.
 
 - **Reach** of a position: the share of games that reach it when the punishing side steers toward
-  it, from 1 where the finder opens (`reachOf`). The erring side's replies add up, weighted by
-  share; where the punishing side has several moves (two book moves), it takes the one that gets
-  there most, since it chooses. Only orders of fewest moves count, so a repetition or a lost tempo
-  adds nothing. A find on the guide counts only the moves the guide plays. Each find assumes the
+  it, from 1 where the finder opens or the board stands (`reachOf`). The erring side's replies add
+  up, weighted by share; where the punishing side has several moves (two book moves), it takes the
+  one that gets there most, since it chooses. Every move order counts, worked back ply by ply up to
+  the walk's bound (the finder's `maxPlies`; a lesson's list, twice its walk's depth), and a game
+  counts where it first gets there, so a repetition adds nothing. A find on the guide counts only the moves the guide plays. Each find assumes the
   punishing side steers toward it, so finds after different book moves at one position each show
   their full reach: they are alternatives, not additive. Reach is derived, never stored.
 - **On the guide**: a find is on the guide (`Find.onGuide`) when the guide's moves reach a position
   where the erring side plays a mistake into its cue. Only these are ranked, kept and written into
   lessons; the rest come back apart (`FinderResult.offGuide`), as evidence.
-- **Score** of an opportunity for a band: the reach of the cue × gain if known. A cue several
-  mistakes lead to is one find, shown by the mistake most games play (the reach of its position ×
-  its share). A gain under `minGain` makes no find, since nearly everyone punishes the mistake, and
+- **Score** of an opportunity for a band: set up × trapped × gain if known (`findScore`), the three
+  numbers its row shows. Set up is the reach of a position one move from the cue (any of them, for
+  a find; the mistake's own, for a lesson row) and trapped the share of those games that play into
+  the cue, so for a find the product is the cue's reach × gain. A cue several mistakes lead to is
+  one find, shown by the mistake most games play. A gain under `minGain` makes no find, since nearly everyone punishes the mistake, and
   the walk goes on past it; an estimated gain is exempt. A find without a gain (a migrated trap not
   yet measured) has no score and lists last. Ties break by reach, then by the line. Found rate is
   shown but breaks no ties: the gain already counts who misses the punishment.
@@ -462,8 +465,8 @@ comes after):
 ### Piece G: List page
 
 Opportunities for the lesson and the band, ranked by score (a migrated trap without a gain yet lists
-after the scored rows), each row with reach, how often and payoff (the cost) meters and the passed
-mark; tapping a row plays Act I and hands over the board at the cue. A section in the wide panel; on
+after the scored rows), each row with Set up, Trapped and Gain meters, which multiply to the score, and the
+passed mark; reach counts from the board's position, and a mistake the line can't reach isn't listed; tapping a row plays Act I and hands over the board at the cue. A section in the wide panel; on
 phones the pager's leftmost page (opportunities, lesson, scoresheet), holding the list and the
 finder's "from this position" button and source chip. The band is the opponent setting's, by
 `opponentBand` in `src/lesson/select.ts` as Practice picks it. Waits on the redesign's pager and on
@@ -516,7 +519,7 @@ list and the finder read the shipped lesson. A saved find's learner moves in Act
 where the lesson as given has no moves (past a guide line's end, so a clean Practice run plays on to
 the cue) and ordinary moves where the guide has others (so the repertoire Practice tests stays the
 guide's). All of a lesson's saved finds are written in one `writeFinds` call, each judged against the
-lesson as given, so their order doesn't change what is booked. Reach, share and score are stored with
-the find: the answers behind them don't outlive the session, and the score needs the cue's reach.
+lesson as given, so their order doesn't change what is booked. Reach, share and gain are stored with
+the find, since the answers behind them don't outlive the session; the score is their product.
 The index's line ends stay the shipped lesson's, so the marks of the rows before a lesson is picked
 (`openingMarks`) can disagree with the lesson's own.
