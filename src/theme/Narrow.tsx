@@ -226,9 +226,20 @@ export function FadingScroll({
   );
 }
 
+/**
+ * A vertical scroller's panning on the web: up and down, and zoom, never
+ * sideways, so a sideways swipe in it reaches a pager around it. It goes on
+ * the scroller itself: a browser may read touch-action only up to the
+ * nearest scroller (Firefox on Android does), past the pager's own `pan-y`.
+ */
+export const VERTICAL_PAN = (
+  NARROW_CSS_LOADS ? { touchAction: 'pan-y pinch-zoom' } : {}
+) as ViewStyle;
+
 const PANE_FADE = (
   NARROW_CSS_LOADS
     ? {
+        ...VERTICAL_PAN,
         overscrollBehavior: 'contain',
         // A mask reads only alpha, so black here is opaque, not a theme color.
         maskImage: `linear-gradient(to bottom, black calc(100% - ${NARROW_PX.fade}px), transparent)`,

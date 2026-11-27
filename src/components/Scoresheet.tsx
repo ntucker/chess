@@ -13,6 +13,7 @@ import {
 
 import type { ReviewQuality } from '@/analysis/quality';
 import type { Ply } from '@/game/replay';
+import { VERTICAL_PAN } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 
 import { Eyebrow } from './Eyebrow';
@@ -80,7 +81,7 @@ function MoveRows({ plies, marks, ply, trapped, onGoto, fill }: Props) {
   for (let n = 1; n < plies.length; n += 2) rows.push(n);
   return (
     <ScrollView
-      style={fill ? styles.fill : styles.scroll}
+      style={[fill ? styles.fill : styles.scroll, VERTICAL_PAN]}
       contentContainerStyle={styles.content}
       // A new move, or text set larger, moves the rows.
       onContentSizeChange={reveal}
