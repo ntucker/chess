@@ -680,6 +680,7 @@ describe('reachOf', () => {
     const moves = [reply('S', 'A', 0.5), reply('A', 'B', 0.5), reply('S', 'B', 0.1)];
     expect(reachOf('S', moves, 1)('B', false)).toBeCloseTo(0.1);
     expect(reachOf('S', moves, 2)('B', false)).toBeCloseTo(0.35);
+    expect(reachOf('S', moves, 2)('B', false, 1)).toBeCloseTo(0.1);
   });
 
   it('counts the games that reach any of several positions once, steering toward any', () => {

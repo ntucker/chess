@@ -183,12 +183,14 @@ export function findOpportunities({
     .map(([cue, ways]): Find => {
       // On the guide if the guide's moves alone lead to one of its mistakes.
       const onGuide = ways.some(({ from }) => reach(from, true) > 0);
-      const games = (keys: PositionKey | readonly PositionKey[]) => reach(keys, onGuide);
+      const games = (keys: PositionKey | readonly PositionKey[], within?: number) =>
+        reach(keys, onGuide, within);
       // A cue several mistakes lead to is one find, shown by the one most games play.
       const played = ({ confirmed, from }: (typeof ways)[number]) => games(from) * confirmed.share;
       const { confirmed } = ways.reduce((most, way) => (played(way) > played(most) ? way : most));
       // Every way counts: the games set up to play into the cue, and of those, the share that do.
-      const setUp = games(setUps.get(cue)!);
+      // Set up a ply sooner than the bound, so each game it counts can play into the cue within it.
+      const setUp = games(setUps.get(cue)!, limits.maxPlies);
       const share = games(cue) / setUp;
       return {
         ...confirmed,
@@ -233,8 +235,8 @@ export interface Move {
  * again count their games once. A game counts where it first gets there, so
  * the start stays 1 and each game counts once. With `onGuide`, only guided
  * moves count (`Move.guided`). Given several positions, the share of games
- * that get to any of them, steering toward any. Reach stays derived: nothing
- * stores it.
+ * that get to any of them, steering toward any; given `within`, within that
+ * many moves rather than `plies`. Reach stays derived: nothing stores it.
  */
 export function reachOf(start: PositionKey, moves: readonly Move[], plies: number) {
   const all = reachOver(start, movesByPly(start, moves, plies));
@@ -246,8 +248,8 @@ export function reachOf(start: PositionKey, moves: readonly Move[], plies: numbe
       plies,
     ),
   );
-  return (keys: PositionKey | readonly PositionKey[], onGuide: boolean) =>
-    (onGuide ? guided : all)(typeof keys === 'string' ? [keys] : keys);
+  return (keys: PositionKey | readonly PositionKey[], onGuide: boolean, within = plies) =>
+    (onGuide ? guided : all)(typeof keys === 'string' ? [keys] : keys, within);
 }
 
 /** A move a game from the start can play after `ply` moves. */
@@ -259,11 +261,11 @@ interface PlyMove {
 /** The reach of each set of positions over `steps` (`movesByPly`), worked out the first time it is asked for. */
 function reachOver(start: PositionKey, steps: readonly PlyMove[]) {
   const known = new Map<string, number>();
-  return (targets: readonly PositionKey[]) => {
-    const id = targets.join(' ');
+  return (targets: readonly PositionKey[], within: number) => {
+    const id = `${within} ${targets.join(' ')}`;
     let reach = known.get(id);
     if (reach === undefined) {
-      reach = steeredReach(start, new Set(targets), steps);
+      reach = steeredReach(start, new Set(targets), within, steps);
       known.set(id, reach);
     }
     return reach;
@@ -273,7 +275,7 @@ function reachOver(start: PositionKey, steps: readonly PlyMove[]) {
 /**
  * The share of games that reach one of `targets` from `start` when the
  * punishing side steers toward them: dynamic programming worked back from the
- * targets (1 each, at every ply) over `steps`, a position's value at each ply
+ * targets (1 each, at every ply up to `within`) over `steps`, a position's value at each ply
  * from its moves' values one ply later, so read from the last ply back, each
  * value is complete before a move into it reads it. Each step is read once,
  * so the work grows with the moves, not with the move orders. A game that
@@ -282,11 +284,12 @@ function reachOver(start: PositionKey, steps: readonly PlyMove[]) {
 function steeredReach(
   start: PositionKey,
   targets: ReadonlySet<PositionKey>,
+  within: number,
   steps: readonly PlyMove[],
 ): number {
   const reach: Map<PositionKey, number>[] = [];
   const at = (key: PositionKey, ply: number) =>
-    targets.has(key) ? 1 : (reach[ply]?.get(key) ?? 0);
+    targets.has(key) ? (ply <= within ? 1 : 0) : (reach[ply]?.get(key) ?? 0);
   for (let i = steps.length - 1; i >= 0; i--) {
     const { move, ply } = steps[i];
     if (targets.has(move.from)) continue;
